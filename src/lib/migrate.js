@@ -27,5 +27,6 @@ export function migrateState(saved) {
     producerBoardId: saved.producerBoardId || crypto.randomUUID(),
     engineerBoardId: saved.engineerBoardId || crypto.randomUUID(),
     sharedBoards: saved.sharedBoards || [],
+    pageNames: saved.pageNames || { producer: "Producer", engineer: "Engineer" },
   };
 }

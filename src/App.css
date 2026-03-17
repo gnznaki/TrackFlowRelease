@@ -8,3 +8,14 @@ select option { background: #18181d; color: #f0f0f0; }
 input[type="color"] { -webkit-appearance: none; padding: 0; }
 input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
 input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
+
+@keyframes dragPickup {
+  from { transform: scale(1) rotate(0deg); box-shadow: none; }
+  to { transform: scale(1.05) rotate(0deg); box-shadow: 0 28px 70px rgba(0,0,0,0.55), 0 8px 24px rgba(0,0,0,0.35); }
+}
+@keyframes dragPickupCard {
+  from { transform: rotate(0deg); box-shadow: none; }
+  to { transform: rotate(1.5deg); box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+}
+.drag-overlay-col { animation: dragPickup 0.25s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+.drag-overlay-card { animation: dragPickupCard 0.25s cubic-bezier(0.25, 1, 0.5, 1) forwards; }

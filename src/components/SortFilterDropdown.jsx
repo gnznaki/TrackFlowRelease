@@ -11,7 +11,7 @@ export default function SortFilterDropdown({ sortBy, setSortBy, sortDir, setSort
   }, []);
 
   const activeCount = activeTagFilters.length;
-  const sortLabels = { modified: "File Modified", opened: "Last Opened", default: "Default" };
+  const sortLabels = { modified: "File Modified", default: "Default Order" };
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -28,7 +28,7 @@ export default function SortFilterDropdown({ sortBy, setSortBy, sortDir, setSort
         <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: theme.surface, border: `1px solid ${theme.border2}`, borderRadius: theme.r, boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 240, zIndex: 500, padding: 8, fontFamily: theme.font || "Syne" }}>
           {/* Sort section */}
           <div style={{ fontSize: 10, color: theme.text3, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.08em", padding: "4px 8px 6px" }}>Sort By</div>
-          {["modified", "opened", "default"].map(opt => (
+          {["default", "modified"].map(opt => (
             <div key={opt} onClick={() => setSortBy(opt)}
               style={{ padding: "7px 10px", borderRadius: theme.r - 2, cursor: "pointer", fontSize: 12, color: sortBy === opt ? theme.accent : theme.text, display: "flex", alignItems: "center", justifyContent: "space-between", background: sortBy === opt ? theme.accent + "15" : "transparent" }}
               onMouseEnter={e => e.currentTarget.style.background = sortBy === opt ? theme.accent + "15" : theme.surface2}

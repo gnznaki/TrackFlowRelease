@@ -54,7 +54,7 @@ function App() {
   const [themeCustom, setThemeCustom] = useState(BASE_PRESETS.default);
   const [font, setFont] = useState("Syne");
   const [colMaxHeight, setColMaxHeight] = useState(DEFAULT_COL_HEIGHT);
-  const [sortBy, setSortBy] = useState("modified");
+  const [sortBy, setSortBy] = useState("default");
   const [sortDir, setSortDir] = useState("desc");
   const [modeTransition, setModeTransition] = useState(false);
   const [activeTagFilters, setActiveTagFilters] = useState([]);
@@ -69,6 +69,10 @@ function App() {
   const [sharedBoards, setSharedBoards] = useState([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [pageNames, setPageNames] = useState({ producer: "Producer", engineer: "Engineer" });
+  const [editingPageKey, setEditingPageKey] = useState(null);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
 
   const { tier, isPro } = useTier(user?.id);
 
@@ -235,6 +239,7 @@ function App() {
     if (saved.producerBoardId) setProducerBoardId(saved.producerBoardId);
     if (saved.engineerBoardId) setEngineerBoardId(saved.engineerBoardId);
     if (saved.sharedBoards) setSharedBoards(saved.sharedBoards);
+    if (saved.pageNames) setPageNames(saved.pageNames);
   }
 
   // Initial load on mount
@@ -256,8 +261,8 @@ function App() {
 
   useEffect(() => {
     if (!ready) return;
-    saveState({ mode, producerCols, engineerCols, producerLayout, engineerLayout, projects, watchedFolders, customTags, themePreset, themeCustom, font, colMaxHeight, discordWebhook, collapsedCols, lockedCols, producerBoardId, engineerBoardId, sharedBoards });
-  }, [ready, mode, producerCols, engineerCols, producerLayout, engineerLayout, projects, watchedFolders, customTags, themePreset, themeCustom, font, colMaxHeight, discordWebhook, collapsedCols, lockedCols, producerBoardId, engineerBoardId, sharedBoards]);
+    saveState({ mode, producerCols, engineerCols, producerLayout, engineerLayout, projects, watchedFolders, customTags, themePreset, themeCustom, font, colMaxHeight, discordWebhook, collapsedCols, lockedCols, producerBoardId, engineerBoardId, sharedBoards, pageNames });
+  }, [ready, mode, producerCols, engineerCols, producerLayout, engineerLayout, projects, watchedFolders, customTags, themePreset, themeCustom, font, colMaxHeight, discordWebhook, collapsedCols, lockedCols, producerBoardId, engineerBoardId, sharedBoards, pageNames]);
 
   // Orphan cleanup — ref pattern avoids #105 loop
   const orphanRef = useRef(null);
@@ -566,6 +571,7 @@ function App() {
   function handleClearCol(colId) { setColumns(cols => cols.map(col => col.id === colId ? { ...col, cards: [] } : col)); }
   async function handleOpenInDaw(filePath) { try { setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.map(c => c.path === filePath ? { ...c, lastOpened: Date.now(), date: "Just opened" } : c) }))); await invoke("open_daw_file", { path: filePath }); } catch (e) { alert("Could not open: " + e); } }
   function handleAddProject() { const title = prompt("Project name:"); if (!title) return; const colors = [theme.accent, "#47c8ff", "#ff6b47", "#b847ff", "#3af0b0"]; setProjects(ps => [...ps, { id: Date.now().toString(), title, color: colors[ps.length % colors.length], songs: [] }]); }
+  function handleReorderSongs(projId, newSongs) { setProjects(ps => ps.map(p => p.id === projId ? { ...p, songs: newSongs } : p)); }
   function handleAddCol() {
     const title = prompt("Column name:"); if (!title) return;
     const newId = Date.now().toString();
@@ -692,28 +698,71 @@ function App() {
       {/* TOPBAR */}
       <div style={{ height: 50, background: theme.surface, borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: "center", padding: "0 16px", gap: 10, flexShrink: 0 }}>
         <div style={{ fontSize: 16, fontWeight: 800, color: theme.text, letterSpacing: "-0.5px" }}>Track<span style={{ color: modeAccent }}>Flow</span></div>
-        <div style={{ display: "flex", background: theme.surface2, border: `1px solid ${theme.border}`, borderRadius: theme.r, padding: 3, gap: 2 }}>
-          {[{ key: "producer", icon: Icons.producer, label: "Producer" }, { key: "engineer", icon: Icons.engineer, label: "Engineer" }].map(m => (
-            <button key={m.key} onClick={() => switchMode(m.key)} style={{ padding: "4px 12px", borderRadius: theme.r - 2, border: "none", background: mode === m.key ? theme.surface3 : "transparent", color: mode === m.key ? (m.key === "producer" ? theme.accent : "#47c8ff") : theme.text3, fontFamily: font || "Syne", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}>
-              <Icon d={m.icon} size={12} />{m.label}
+
+        {/* Page tabs — renameable, with inline invite button */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <div style={{ display: "flex", background: theme.surface2, border: `1px solid ${theme.border}`, borderRadius: theme.r, padding: 3, gap: 2 }}>
+            {[{ key: "producer", icon: Icons.producer }, { key: "engineer", icon: Icons.engineer }].map(m => (
+              <div key={m.key}
+                onClick={() => switchMode(m.key)}
+                onDoubleClick={() => { switchMode(m.key); setEditingPageKey(m.key); }}
+                style={{ padding: "4px 10px", borderRadius: theme.r - 2, background: mode === m.key ? theme.surface3 : "transparent", color: mode === m.key ? (m.key === "producer" ? theme.accent : "#47c8ff") : theme.text3, fontFamily: font || "Syne", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, userSelect: "none" }}>
+                <Icon d={m.icon} size={12} />
+                {editingPageKey === m.key ? (
+                  <input
+                    autoFocus
+                    defaultValue={pageNames[m.key]}
+                    onBlur={e => { setPageNames(p => ({ ...p, [m.key]: e.target.value || p[m.key] })); setEditingPageKey(null); }}
+                    onKeyDown={e => { if (e.key === "Enter") e.target.blur(); if (e.key === "Escape") { setEditingPageKey(null); } e.stopPropagation(); }}
+                    onClick={e => e.stopPropagation()}
+                    style={{ width: 80, background: "transparent", border: "none", borderBottom: `1px solid ${m.key === "producer" ? theme.accent : "#47c8ff"}`, color: "inherit", fontFamily: "inherit", fontSize: "inherit", fontWeight: "inherit", outline: "none", padding: 0 }}
+                  />
+                ) : (
+                  <span>{pageNames[m.key]}</span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Collaborate/invite button inline with page tabs */}
+          {user && (
+            <button
+              onClick={() => isPro ? setShowShareModal(true) : setShowUpgradeModal(true)}
+              title={!isPro ? "Pro feature — upgrade to share boards" : isCurrentBoardShared ? "Board is shared — manage collaboration" : "Invite / share this board"}
+              style={{ position: "relative", width: 28, height: 28, borderRadius: theme.r, border: `1px solid ${isCurrentBoardShared ? theme.accent + "60" : theme.border}`, background: isCurrentBoardShared ? `rgba(${theme.accentRgb},0.1)` : "transparent", color: isCurrentBoardShared ? theme.accent : theme.text3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.borderColor = theme.accent + "60"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = isCurrentBoardShared ? theme.accent : theme.text3; e.currentTarget.style.borderColor = isCurrentBoardShared ? theme.accent + "60" : theme.border; }}>
+              <Icon d={Icons.users} size={12} />
+              {isCurrentBoardShared && <span style={{ position: "absolute", top: 4, right: 4, width: 5, height: 5, borderRadius: "50%", background: theme.accent }} />}
             </button>
-          ))}
+          )}
         </div>
+
         <div style={{ flex: 1 }} />
 
-        {/* Search input */}
+        {/* Expandable search bar */}
         <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-          <Icon d={Icons.search} size={12} style={{ position: "absolute", left: 9, color: searchQuery ? theme.accent : theme.text3, pointerEvents: "none", transition: "color 0.15s" }} />
-          <input
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search projects..."
-            style={{ background: theme.surface2, border: `1px solid ${searchQuery ? theme.accent + "60" : theme.border}`, borderRadius: theme.r, padding: "5px 28px 5px 28px", color: theme.text, fontFamily: font || "Syne", fontSize: 12, outline: "none", width: searchQuery ? 180 : 140, transition: "width 0.2s, border-color 0.2s" }}
-          />
-          {searchQuery && (
-            <div onClick={() => setSearchQuery("")} style={{ position: "absolute", right: 8, cursor: "pointer", color: theme.text3, display: "flex" }} onMouseEnter={e => e.currentTarget.style.color = theme.text} onMouseLeave={e => e.currentTarget.style.color = theme.text3}>
-              <Icon d={Icons.close} size={10} />
-            </div>
+          {(searchActive || searchQuery) ? (
+            <>
+              <Icon d={Icons.search} size={12} style={{ position: "absolute", left: 9, color: searchQuery ? theme.accent : theme.text3, pointerEvents: "none" }} />
+              <input
+                autoFocus
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onBlur={() => { if (!searchQuery) setSearchActive(false); }}
+                placeholder="Search projects..."
+                style={{ background: theme.surface2, border: `1px solid ${searchQuery ? theme.accent + "60" : theme.border}`, borderRadius: theme.r, padding: "5px 28px 5px 28px", color: theme.text, fontFamily: font || "Syne", fontSize: 12, outline: "none", width: 180, transition: "border-color 0.2s" }}
+              />
+              {searchQuery && (
+                <div onClick={() => { setSearchQuery(""); setSearchActive(false); }} style={{ position: "absolute", right: 8, cursor: "pointer", color: theme.text3, display: "flex" }} onMouseEnter={e => e.currentTarget.style.color = theme.text} onMouseLeave={e => e.currentTarget.style.color = theme.text3}>
+                  <Icon d={Icons.close} size={10} />
+                </div>
+              )}
+            </>
+          ) : (
+            <button onClick={() => setSearchActive(true)} title="Search projects" style={{ width: 32, height: 32, borderRadius: theme.r, border: `1px solid ${theme.border}`, background: theme.surface2, color: theme.text3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} onMouseEnter={e => e.currentTarget.style.color = theme.accent} onMouseLeave={e => e.currentTarget.style.color = theme.text3}>
+              <Icon d={Icons.search} size={13} />
+            </button>
           )}
         </div>
 
@@ -723,7 +772,6 @@ function App() {
         {watchedFolders.length > 0 && <div style={{ fontSize: 10, fontFamily: "monospace", color: theme.text3, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{watchedFolders.length} folder{watchedFolders.length > 1 ? "s" : ""} watched</div>}
         {[
           { icon: Icons.backup, action: async () => { const p = await backupState(); if (p) alert(`Backup saved:\n${p}`); }, hover: theme.accent, title: "Backup" },
-          { icon: Icons.theme, action: () => setShowThemeCustomizer(true), hover: theme.accent, title: "Customize Theme" },
           { icon: Icons.tag, action: () => setShowTagManager(true), hover: "#b847ff", title: "Manage Tags" },
           { icon: Icons.folder, action: handleAddFolder, hover: "#47c8ff", title: "Add Folder" },
           { icon: Icons.scan, action: handleRescan, hover: theme.accent, title: "Rescan" },
@@ -734,38 +782,58 @@ function App() {
           </button>
         ))}
 
-        {/* Collaborate button — glows when board is shared; gates behind Pro */}
-        {user && (
-          <button
-            onClick={() => isPro ? setShowShareModal(true) : setShowUpgradeModal(true)}
-            title={!isPro ? "Pro feature — upgrade to share boards" : isCurrentBoardShared ? "Board is shared — manage collaboration" : "Share or join a board"}
-            style={{ position: "relative", width: 32, height: 32, borderRadius: theme.r, border: `1px solid ${isCurrentBoardShared ? theme.accent + "60" : theme.border}`, background: isCurrentBoardShared ? `rgba(${theme.accentRgb},0.1)` : theme.surface2, color: isCurrentBoardShared ? theme.accent : theme.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
-            onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.borderColor = theme.accent + "60"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = isCurrentBoardShared ? theme.accent : theme.text2; e.currentTarget.style.borderColor = isCurrentBoardShared ? theme.accent + "60" : theme.border; }}>
-            <Icon d={Icons.users} size={13} />
-            {isCurrentBoardShared && <span style={{ position: "absolute", top: 5, right: 5, width: 6, height: 6, borderRadius: "50%", background: theme.accent }} />}
-            {!isPro && <span style={{ position: "absolute", bottom: 4, right: 4, fontSize: 7, lineHeight: 1 }}>★</span>}
-          </button>
-        )}
+        {/* Profile avatar + dropdown */}
         <div style={{ position: "relative", flexShrink: 0 }}>
           <div
-            title={user ? `${user.email} · ${tier} plan — click to sign out` : "Click to sign in or create account"}
-            onClick={user ? signOut : () => setShowAuthModal(true)}
+            title={user ? `${user.email} · ${tier}` : "Click to sign in or create account"}
+            onClick={() => user ? setShowProfileDropdown(v => !v) : setShowAuthModal(true)}
             style={{ width: 28, height: 28, borderRadius: "50%", background: user ? `linear-gradient(135deg, ${theme.accent}, #47c8ff)` : theme.surface3, border: user ? "none" : `1px solid ${theme.border2}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: user ? theme.accentText : theme.text3, cursor: "pointer" }}
-            onMouseEnter={e => e.currentTarget.style.opacity = "0.8"}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
             onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
             {initial ?? "~"}
           </div>
-          {/* Tier badge — Pro gets accent dot, Team gets cyan dot, Free gets upgrade prompt */}
           {user && !isPro && (
             <div onClick={() => setShowUpgradeModal(true)} title="Upgrade to Pro"
-              style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: theme.surface3, border: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 6, cursor: "pointer", color: theme.text3 }}>
-              ★
-            </div>
+              style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: theme.surface3, border: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 6, cursor: "pointer", color: theme.text3 }}>★</div>
           )}
           {user && isPro && (
-            <div title={`${tier} plan`}
-              style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: tier === "team" ? "#47c8ff" : theme.accent, border: `1px solid ${theme.bg}` }} />
+            <div title={`${tier} plan`} style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: tier === "team" ? "#47c8ff" : theme.accent, border: `1px solid ${theme.bg}` }} />
+          )}
+          {showProfileDropdown && user && (
+            <div
+              style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+              onClick={() => setShowProfileDropdown(false)}
+            />
+          )}
+          {showProfileDropdown && user && (
+            <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: theme.surface, border: `1px solid ${theme.border2}`, borderRadius: theme.r, boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 200, zIndex: 9999, overflow: "hidden", fontFamily: font || "Syne" }}>
+              {/* Header */}
+              <div style={{ padding: "12px 14px 10px", borderBottom: `1px solid ${theme.border}` }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</div>
+                <div style={{ fontSize: 10, color: theme.text3, marginTop: 2, textTransform: "capitalize" }}>{tier} plan{!isPro && " · "}{!isPro && <span onClick={() => { setShowUpgradeModal(true); setShowProfileDropdown(false); }} style={{ color: theme.accent, cursor: "pointer" }}>Upgrade</span>}</div>
+              </div>
+              {/* Actions */}
+              {[
+                { label: "Customize Theme", icon: Icons.theme, action: () => { setShowThemeCustomizer(true); setShowProfileDropdown(false); } },
+                { label: "Profile Settings", icon: Icons.settings, action: () => { setShowProfileDropdown(false); } },
+              ].map((item, i) => (
+                <div key={i} onClick={item.action}
+                  style={{ padding: "9px 14px", cursor: "pointer", fontSize: 12, color: theme.text2, display: "flex", alignItems: "center", gap: 9 }}
+                  onMouseEnter={e => e.currentTarget.style.background = theme.surface2}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  <Icon d={item.icon} size={12} style={{ color: theme.text3 }} />
+                  {item.label}
+                </div>
+              ))}
+              <div style={{ height: 1, background: theme.border, margin: "4px 0" }} />
+              <div onClick={() => { signOut(); setShowProfileDropdown(false); }}
+                style={{ padding: "9px 14px", cursor: "pointer", fontSize: 12, color: "#ff5050", display: "flex", alignItems: "center", gap: 9 }}
+                onMouseEnter={e => e.currentTarget.style.background = theme.surface2}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                <Icon d={Icons.close} size={12} />
+                Log Out
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -791,7 +859,7 @@ function App() {
         onDragEnd={handleDragEnd}
       >
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          <ProjectSidebar projects={projects} onAddProject={handleAddProject} onDeleteProject={id => setProjects(ps => ps.filter(p => p.id !== id))} onAddSong={(projId, songId) => setProjects(ps => ps.map(p => p.id === projId ? { ...p, songs: [...(p.songs || []), songId] } : p))} onRemoveSong={(projId, songId) => setProjects(ps => ps.map(p => p.id === projId ? { ...p, songs: (p.songs || []).filter(s => s !== songId) } : p))} onRenameProject={(id, title) => setProjects(ps => ps.map(p => p.id === id ? { ...p, title } : p))} theme={theme} allColumns={[...producerCols, ...engineerCols]} isCardDrag={isCardDrag} collapsed={projectsCollapsed} onToggleCollapsed={() => setProjectsCollapsed(v => !v)} />
+          <ProjectSidebar projects={projects} onAddProject={handleAddProject} onDeleteProject={id => setProjects(ps => ps.filter(p => p.id !== id))} onAddSong={(projId, songId) => setProjects(ps => ps.map(p => p.id === projId ? { ...p, songs: [...(p.songs || []), songId] } : p))} onRemoveSong={(projId, songId) => setProjects(ps => ps.map(p => p.id === projId ? { ...p, songs: (p.songs || []).filter(s => s !== songId) } : p))} onRenameProject={(id, title) => setProjects(ps => ps.map(p => p.id === id ? { ...p, title } : p))} onReorderSongs={handleReorderSongs} theme={theme} allColumns={[...producerCols, ...engineerCols]} isCardDrag={isCardDrag} collapsed={projectsCollapsed} onToggleCollapsed={() => setProjectsCollapsed(v => !v)} />
 
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "auto", opacity: modeTransition ? 0 : 1, transition: "opacity 0.25s", background: mode === "producer" ? theme.glow : theme.glow2 }}>
             <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 16, minWidth: "fit-content" }}>
@@ -837,13 +905,11 @@ function App() {
             </div>
 
             <DragOverlay>
-              {activeCard && <div style={{ width: 260, opacity: 0.95, transform: "rotate(1.5deg)" }}><CardContent card={activeCard} isDragging allTags={customTags} theme={theme} /></div>}
+              {activeCard && <div className="drag-overlay-card" style={{ width: 260, opacity: 0.95 }}><CardContent card={activeCard} isDragging allTags={customTags} theme={theme} /></div>}
               {activeColData && (
-                <div style={{
+                <div className="drag-overlay-col" style={{
                   width: 285,
-                  transform: "scale(1.05)",
                   transformOrigin: "center top",
-                  boxShadow: "0 28px 70px rgba(0,0,0,0.55), 0 8px 24px rgba(0,0,0,0.35)",
                   background: theme.surface,
                   border: `1px solid ${theme.accent}90`,
                   borderRadius: theme.r2,

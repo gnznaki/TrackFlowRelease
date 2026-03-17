@@ -51,21 +51,29 @@ function CardDropZone({ colId, children, theme, isCardDrag, colMaxHeight }) {
   const { setNodeRef, isOver } = useDroppable({ id: "zone-" + colId, disabled: !isCardDrag });
   const divRef = useRef(null);
   const scrollRef = useRef(0);
+  // Saved on pointer-down so we can restore if browser auto-scrolls before render
+  const savedScrollRef = useRef(null);
 
   const combinedRef = useCallback((node) => {
     divRef.current = node;
     setNodeRef(node);
   }, [setNodeRef]);
 
-  // Restore scroll after every render — dnd-kit ref cycling resets scrollTop
+  // Restore scroll after every render — saves from browser focus-induced scroll-into-view
   useLayoutEffect(() => {
-    if (divRef.current && divRef.current.scrollTop !== scrollRef.current) {
-      divRef.current.scrollTop = scrollRef.current;
+    if (!divRef.current) return;
+    const target = savedScrollRef.current !== null ? savedScrollRef.current : scrollRef.current;
+    if (divRef.current.scrollTop !== target) {
+      divRef.current.scrollTop = target;
     }
+    savedScrollRef.current = null;
   });
 
   return (
-    <div ref={combinedRef} onScroll={(e) => { scrollRef.current = e.currentTarget.scrollTop; }}
+    <div
+      ref={combinedRef}
+      onPointerDown={() => { savedScrollRef.current = divRef.current?.scrollTop ?? 0; }}
+      onScroll={(e) => { scrollRef.current = e.currentTarget.scrollTop; }}
       style={{ padding: 12, height: colMaxHeight, overflowY: "auto", background: isOver && isCardDrag ? `rgba(${theme.accentRgb},0.07)` : "transparent", borderRadius: theme.r, transition: "background 0.15s" }}>
       {children}
     </div>
