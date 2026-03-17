@@ -24,7 +24,9 @@ import { Icon, Icons } from "./components/Icon";
 import { AuthScreenInner } from "./components/AuthScreen";
 import { useAuth } from "./hooks/useAuth";
 import { useCollabBoard } from "./hooks/useCollabBoard";
+import { useTier } from "./hooks/useTier";
 import ShareModal from "./components/ShareModal";
+import UpgradeModal from "./components/UpgradeModal";
 import "./App.css";
 
 function App() {
@@ -66,6 +68,9 @@ function App() {
   const [engineerBoardId, setEngineerBoardId] = useState(() => crypto.randomUUID());
   const [sharedBoards, setSharedBoards] = useState([]);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  const { tier, isPro } = useTier(user?.id);
 
   const theme = buildTheme(themeCustom.bg, themeCustom.cardBg, themeCustom.borderHex, themeCustom.accent, font);
   const columns = mode === "producer" ? producerCols : engineerCols;
@@ -657,6 +662,7 @@ function App() {
 
   return (
     <div style={{ fontFamily: font || "Syne", background: theme.bg, color: theme.text, height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", transition: "background 0.3s" }}>
+      {showUpgradeModal && <UpgradeModal tier={tier} onClose={() => setShowUpgradeModal(false)} theme={theme} />}
       {showShareModal && user && <ShareModal
         boardId={currentBoardId}
         boardName={mode === "producer" ? "Producer Board" : "Engineer Board"}
@@ -728,23 +734,39 @@ function App() {
           </button>
         ))}
 
-        {/* Collaborate button — glows when board is shared */}
+        {/* Collaborate button — glows when board is shared; gates behind Pro */}
         {user && (
-          <button onClick={() => setShowShareModal(true)} title={isCurrentBoardShared ? "Board is shared — manage collaboration" : "Share or join a board"}
+          <button
+            onClick={() => isPro ? setShowShareModal(true) : setShowUpgradeModal(true)}
+            title={!isPro ? "Pro feature — upgrade to share boards" : isCurrentBoardShared ? "Board is shared — manage collaboration" : "Share or join a board"}
             style={{ position: "relative", width: 32, height: 32, borderRadius: theme.r, border: `1px solid ${isCurrentBoardShared ? theme.accent + "60" : theme.border}`, background: isCurrentBoardShared ? `rgba(${theme.accentRgb},0.1)` : theme.surface2, color: isCurrentBoardShared ? theme.accent : theme.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
             onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.borderColor = theme.accent + "60"; }}
             onMouseLeave={e => { e.currentTarget.style.color = isCurrentBoardShared ? theme.accent : theme.text2; e.currentTarget.style.borderColor = isCurrentBoardShared ? theme.accent + "60" : theme.border; }}>
             <Icon d={Icons.users} size={13} />
             {isCurrentBoardShared && <span style={{ position: "absolute", top: 5, right: 5, width: 6, height: 6, borderRadius: "50%", background: theme.accent }} />}
+            {!isPro && <span style={{ position: "absolute", bottom: 4, right: 4, fontSize: 7, lineHeight: 1 }}>★</span>}
           </button>
         )}
-        <div
-          title={user ? `Signed in as ${user.email} — click to sign out` : "Click to sign in or create account"}
-          onClick={user ? signOut : () => setShowAuthModal(true)}
-          style={{ width: 28, height: 28, borderRadius: "50%", background: user ? `linear-gradient(135deg, ${theme.accent}, #47c8ff)` : theme.surface3, border: user ? "none" : `1px solid ${theme.border2}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: user ? theme.accentText : theme.text3, cursor: "pointer", flexShrink: 0 }}
-          onMouseEnter={e => e.currentTarget.style.opacity = "0.8"}
-          onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
-          {initial ?? "~"}
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <div
+            title={user ? `${user.email} · ${tier} plan — click to sign out` : "Click to sign in or create account"}
+            onClick={user ? signOut : () => setShowAuthModal(true)}
+            style={{ width: 28, height: 28, borderRadius: "50%", background: user ? `linear-gradient(135deg, ${theme.accent}, #47c8ff)` : theme.surface3, border: user ? "none" : `1px solid ${theme.border2}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: user ? theme.accentText : theme.text3, cursor: "pointer" }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.8"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+            {initial ?? "~"}
+          </div>
+          {/* Tier badge — Pro gets accent dot, Team gets cyan dot, Free gets upgrade prompt */}
+          {user && !isPro && (
+            <div onClick={() => setShowUpgradeModal(true)} title="Upgrade to Pro"
+              style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: theme.surface3, border: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 6, cursor: "pointer", color: theme.text3 }}>
+              ★
+            </div>
+          )}
+          {user && isPro && (
+            <div title={`${tier} plan`}
+              style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: tier === "team" ? "#47c8ff" : theme.accent, border: `1px solid ${theme.bg}` }} />
+          )}
         </div>
       </div>
 
