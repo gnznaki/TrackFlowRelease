@@ -51,7 +51,7 @@ function CardDropZone({ colId, children, theme, isCardDrag, colMaxHeight }) {
   const { setNodeRef, isOver } = useDroppable({ id: "zone-" + colId, disabled: !isCardDrag });
   const divRef = useRef(null);
   const scrollRef = useRef(0);
-  // Saved on pointer-down so we can restore if browser auto-scrolls before render
+  // Set in capture-phase pointerdown (before dnd-kit's bubble handler fires or stops propagation)
   const savedScrollRef = useRef(null);
 
   const combinedRef = useCallback((node) => {
@@ -59,7 +59,16 @@ function CardDropZone({ colId, children, theme, isCardDrag, colMaxHeight }) {
     setNodeRef(node);
   }, [setNodeRef]);
 
-  // Restore scroll after every render — saves from browser focus-induced scroll-into-view
+  // Attach a capture-phase listener so we always capture scroll before dnd-kit can stopPropagation
+  useEffect(() => {
+    const div = divRef.current;
+    if (!div) return;
+    const capture = () => { savedScrollRef.current = div.scrollTop; };
+    div.addEventListener("pointerdown", capture, true);
+    return () => div.removeEventListener("pointerdown", capture, true);
+  }, []); // stable after mount
+
+  // Restore scroll position after every render — prevents focus-induced scroll-into-view
   useLayoutEffect(() => {
     if (!divRef.current) return;
     const target = savedScrollRef.current !== null ? savedScrollRef.current : scrollRef.current;
@@ -72,7 +81,6 @@ function CardDropZone({ colId, children, theme, isCardDrag, colMaxHeight }) {
   return (
     <div
       ref={combinedRef}
-      onPointerDown={() => { savedScrollRef.current = divRef.current?.scrollTop ?? 0; }}
       onScroll={(e) => { scrollRef.current = e.currentTarget.scrollTop; }}
       style={{ padding: 12, height: colMaxHeight, overflowY: "auto", background: isOver && isCardDrag ? `rgba(${theme.accentRgb},0.07)` : "transparent", borderRadius: theme.r, transition: "background 0.15s" }}>
       {children}

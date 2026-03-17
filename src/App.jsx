@@ -74,7 +74,9 @@ function App() {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
 
-  const { tier, isPro } = useTier(user?.id);
+  const { tier, isPro, displayName, updateDisplayName } = useTier(user?.id);
+  const [editingDisplayName, setEditingDisplayName] = useState(false);
+  const [displayNameDraft, setDisplayNameDraft] = useState("");
 
   const theme = buildTheme(themeCustom.bg, themeCustom.cardBg, themeCustom.borderHex, themeCustom.accent, font);
   const columns = mode === "producer" ? producerCols : engineerCols;
@@ -537,7 +539,6 @@ function App() {
 
   // ── HANDLERS ─────────────────────────────────────────────────────────────────
   function handleSelectCard(card) {
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     setSelectedCard(card);
   }
   function handleUpdateNote(cardId, note) { setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.map(c => c.id === cardId ? { ...c, note } : c) }))); setSelectedCard(prev => prev?.id === cardId ? { ...prev, note } : prev); }
@@ -785,12 +786,12 @@ function App() {
         {/* Profile avatar + dropdown */}
         <div style={{ position: "relative", flexShrink: 0 }}>
           <div
-            title={user ? `${user.email} · ${tier}` : "Click to sign in or create account"}
+            title={user ? `${displayName || user.email} · ${tier}` : "Click to sign in or create account"}
             onClick={() => user ? setShowProfileDropdown(v => !v) : setShowAuthModal(true)}
             style={{ width: 28, height: 28, borderRadius: "50%", background: user ? `linear-gradient(135deg, ${theme.accent}, #47c8ff)` : theme.surface3, border: user ? "none" : `1px solid ${theme.border2}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: user ? theme.accentText : theme.text3, cursor: "pointer" }}
             onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
             onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
-            {initial ?? "~"}
+            {displayName ? displayName[0].toUpperCase() : (initial ?? "~")}
           </div>
           {user && !isPro && (
             <div onClick={() => setShowUpgradeModal(true)} title="Upgrade to Pro"
@@ -809,8 +810,26 @@ function App() {
             <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: theme.surface, border: `1px solid ${theme.border2}`, borderRadius: theme.r, boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 200, zIndex: 9999, overflow: "hidden", fontFamily: font || "Syne" }}>
               {/* Header */}
               <div style={{ padding: "12px 14px 10px", borderBottom: `1px solid ${theme.border}` }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</div>
-                <div style={{ fontSize: 10, color: theme.text3, marginTop: 2, textTransform: "capitalize" }}>{tier} plan{!isPro && " · "}{!isPro && <span onClick={() => { setShowUpgradeModal(true); setShowProfileDropdown(false); }} style={{ color: theme.accent, cursor: "pointer" }}>Upgrade</span>}</div>
+                {editingDisplayName ? (
+                  <input
+                    autoFocus
+                    value={displayNameDraft}
+                    onChange={e => setDisplayNameDraft(e.target.value)}
+                    onBlur={() => { updateDisplayName(displayNameDraft); setEditingDisplayName(false); }}
+                    onKeyDown={e => { if (e.key === "Enter") { updateDisplayName(displayNameDraft); setEditingDisplayName(false); } if (e.key === "Escape") setEditingDisplayName(false); e.stopPropagation(); }}
+                    placeholder="Display name"
+                    style={{ width: "100%", background: theme.surface2, border: `1px solid ${theme.accent}60`, borderRadius: theme.r - 2, padding: "4px 8px", color: theme.text, fontFamily: font || "Syne", fontSize: 12, fontWeight: 700, outline: "none" }}
+                  />
+                ) : (
+                  <div
+                    onClick={() => { setDisplayNameDraft(displayName || ""); setEditingDisplayName(true); }}
+                    title="Click to set display name"
+                    style={{ fontSize: 12, fontWeight: 700, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "text" }}>
+                    {displayName || <span style={{ color: theme.text3, fontWeight: 400 }}>Add display name…</span>}
+                  </div>
+                )}
+                <div style={{ fontSize: 10, color: theme.text3, marginTop: 2 }}>{user.email}</div>
+                <div style={{ fontSize: 10, color: theme.text3, textTransform: "capitalize" }}>{tier} plan{!isPro && " · "}{!isPro && <span onClick={() => { setShowUpgradeModal(true); setShowProfileDropdown(false); }} style={{ color: theme.accent, cursor: "pointer" }}>Upgrade</span>}</div>
               </div>
               {/* Actions */}
               {[
