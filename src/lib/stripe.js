@@ -1,5 +1,14 @@
-import { open } from "@tauri-apps/plugin-opener";
 import { supabase } from "./supabase";
+
+// Open a URL in the system browser — works in Tauri and plain browser
+async function openExternal(url) {
+  try {
+    const { openUrl } = await import("@tauri-apps/plugin-opener");
+    await openUrl(url);
+  } catch {
+    window.open(url, "_blank");
+  }
+}
 
 export const PRICES = {
   pro_monthly: import.meta.env.VITE_STRIPE_PRO_PRICE_ID,
@@ -28,7 +37,7 @@ export async function startCheckout(priceKey) {
 
   if (error || !data?.url) return { error: error?.message ?? "Failed to create checkout session" };
 
-  await open(data.url);
+  await openExternal(data.url);
   return { error: null };
 }
 
@@ -46,6 +55,6 @@ export async function openCustomerPortal() {
 
   if (error || !data?.url) return { error: error?.message ?? "Failed to open billing portal" };
 
-  await open(data.url);
+  await openExternal(data.url);
   return { error: null };
 }
