@@ -26,7 +26,8 @@ import { useAuth } from "./hooks/useAuth";
 import "./App.css";
 
 function App() {
-  const { user, loading: authLoading, isOffline, initial, signIn, signUp, signOut, goOffline } = useAuth();
+  const { user, loading: authLoading, isOffline, initial, signIn, signUp, signOut, goOffline, leaveOffline } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [ready, setReady] = useState(false);
   const [mode, setMode] = useState("producer");
   const [producerCols, setProducerCols] = useState(PRODUCER_COLUMNS);
@@ -204,6 +205,9 @@ function App() {
     return () => { try { document.head.removeChild(el); } catch (e) {} };
   }, [font]);
 
+  // Auto-close auth modal when sign-in succeeds
+  useEffect(() => { if (user) setShowAuthModal(false); }, [user]);
+
   // Still resolving auth session — show a minimal splash
   if (authLoading) return (
     <div style={{ height: "100vh", background: "#0a0a0b", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Syne, sans-serif", flexDirection: "column", gap: 12 }}>
@@ -337,31 +341,27 @@ function App() {
         const activeRow = lyt.findIndex(row => row.includes(activeId));
         const overRow = lyt.findIndex(row => row.includes(overId));
         if (activeRow !== -1 && overRow !== -1 && activeId !== overId) {
-          // Smooth cross-row + within-row ordering: insert before hovered column.
-          const next = lyt.map(r => [...r]);
-          // Remove active from its current row
-          next[activeRow] = next[activeRow].filter(id => id !== activeId);
-          // Insert into overRow at hovered index
-          const insertAt = Math.max(0, next[overRow].indexOf(overId));
-          next[overRow].splice(insertAt, 0, activeId);
-          const cleaned = next.filter(r => r.length > 0);
-          // Only update if changed to avoid jitter
-          const same = JSON.stringify(cleaned) === JSON.stringify(lyt);
-          if (!same) {
-            setLayout(cleaned);
-            layoutRef.current = cleaned;
+          if (activeRow === overRow) {
+            // Same row: arrayMove handles end-position correctly (insert-before can't reach last slot)
+            const row = lyt[activeRow];
+            const fi = row.indexOf(activeId);
+            const ti = row.indexOf(overId);
+            if (fi !== -1 && ti !== -1 && fi !== ti) {
+              const newLayout = lyt.map((r, i) => i === activeRow ? arrayMove(r, fi, ti) : r);
+              const same = JSON.stringify(newLayout) === JSON.stringify(lyt);
+              if (!same) { setLayout(newLayout); layoutRef.current = newLayout; }
+            }
+          } else {
+            // Cross-row: remove from source row, insert before the hovered column
+            const next = lyt.map(r => [...r]);
+            next[activeRow] = next[activeRow].filter(id => id !== activeId);
+            const insertAt = Math.max(0, next[overRow].indexOf(overId));
+            next[overRow].splice(insertAt, 0, activeId);
+            const cleaned = next.filter(r => r.length > 0);
+            const same = JSON.stringify(cleaned) === JSON.stringify(lyt);
+            if (!same) { setLayout(cleaned); layoutRef.current = cleaned; }
           }
           return;
-        }
-        if (activeRow !== -1 && activeRow === overRow && activeId !== overId) {
-          const row = lyt[activeRow];
-          const fi = row.indexOf(activeId);
-          const ti = row.indexOf(overId);
-          if (fi !== -1 && ti !== -1 && fi !== ti) {
-            const newLayout = lyt.map((r, i) => i === activeRow ? arrayMove(r, fi, ti) : r);
-            setLayout(newLayout);
-            layoutRef.current = newLayout; // ← sync immediately, don't wait for useEffect
-          }
         }
       });
       return;
@@ -624,16 +624,23 @@ function App() {
           </button>
         ))}
         <div
-          title={user ? `Signed in as ${user.email}` : "Offline mode"}
-          onClick={user ? signOut : undefined}
-          style={{ width: 28, height: 28, borderRadius: "50%", background: user ? `linear-gradient(135deg, ${theme.accent}, #47c8ff)` : theme.surface3, border: user ? "none" : `1px solid ${theme.border2}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: user ? theme.accentText : theme.text3, cursor: user ? "pointer" : "default", flexShrink: 0 }}
-          onMouseEnter={e => { if (user) e.currentTarget.style.opacity = "0.8"; }}
-          onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}>
+          title={user ? `Signed in as ${user.email} — click to sign out` : "Click to sign in or create account"}
+          onClick={user ? signOut : () => setShowAuthModal(true)}
+          style={{ width: 28, height: 28, borderRadius: "50%", background: user ? `linear-gradient(135deg, ${theme.accent}, #47c8ff)` : theme.surface3, border: user ? "none" : `1px solid ${theme.border2}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: user ? theme.accentText : theme.text3, cursor: "pointer", flexShrink: 0 }}
+          onMouseEnter={e => e.currentTarget.style.opacity = "0.8"}
+          onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
           {initial ?? "~"}
         </div>
       </div>
 
       <div style={{ height: 2, background: `linear-gradient(90deg, ${modeAccent}99, transparent)`, flexShrink: 0 }} />
+
+      {/* Auth modal for offline users who want to sign in */}
+      {showAuthModal && !user && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10000 }}>
+          <AuthScreenInner signIn={signIn} signUp={signUp} onOffline={() => setShowAuthModal(false)} />
+        </div>
+      )}
 
       <DndContext
         sensors={sensors}

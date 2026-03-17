@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -37,7 +38,9 @@ function SortableCard({ card, isSelected, onClick, onDelete, allTags, theme, isL
     }
   });
   return (
-    <div ref={setNodeRef} {...attributes} tabIndex={-1} {...(isLocked ? {} : listeners)} onClick={onClick}
+    <div ref={setNodeRef} {...attributes} tabIndex={-1} {...(isLocked ? {} : listeners)}
+      onClick={onClick}
+      onMouseDown={e => e.preventDefault()}
       style={{ transform: CSS.Transform.toString(transform), transition, marginBottom: 8, opacity: isDragging ? 0 : 1, cursor: isLocked ? "default" : (isDragging ? "grabbing" : "grab"), touchAction: "none", userSelect: "none" }}>
       <CardContent card={card} isSelected={isSelected} onDelete={onDelete} allTags={allTags} theme={theme} />
     </div>
@@ -163,7 +166,7 @@ export function SortableColumn({ col, selectedCard, onSelectCard, onAddCard, onD
 
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, width: 285, flexShrink: 0, willChange: "transform" }}>
-      {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={contextItems} onClose={() => setContextMenu(null)} theme={theme} />}
+      {contextMenu && createPortal(<ContextMenu x={contextMenu.x} y={contextMenu.y} items={contextItems} onClose={() => setContextMenu(null)} theme={theme} />, document.body)}
       {colorPicker.open && (
         <div style={{ position: "fixed", inset: 0, zIndex: 10000 }} onMouseDown={closeColorPicker}>
           <div
