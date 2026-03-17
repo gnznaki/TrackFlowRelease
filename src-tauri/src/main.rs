@@ -3,7 +3,7 @@
 use std::process::Command;
 use std::time::UNIX_EPOCH;
 use std::path::Path;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 #[tauri::command]
 fn open_daw_file(path: String) -> Result<(), String> {
@@ -71,8 +71,38 @@ async fn check_for_update(app: tauri::AppHandle) -> Result<serde_json::Value, St
 #[tauri::command]
 async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
     use tauri_plugin_updater::UpdaterExt;
-    if let Some(update) = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())? {
-        update.download_and_install(|_, _| {}, || {}).await.map_err(|e| e.to_string())?;
+
+    // Auto-backup state before touching anything
+    if let Ok(data_dir) = app.path().app_data_dir() {
+        let state_file = data_dir.join("trackflow-state.json");
+        if state_file.exists() {
+            let ts = std::time::SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let backup = data_dir.join(format!("trackflow-pre-update-{}.json", ts));
+            let _ = std::fs::copy(&state_file, &backup);
+        }
+    }
+
+    if let Some(update) = app.updater()
+        .map_err(|e| e.to_string())?
+        .check()
+        .await
+        .map_err(|e| e.to_string())?
+    {
+        let app_clone = app.clone();
+        update.download_and_install(
+            move |downloaded, total| {
+                let progress = total
+                    .map(|t| if t > 0 { ((downloaded as f64 / t as f64) * 100.0) as u32 } else { 0 })
+                    .unwrap_or(0);
+                let _ = app_clone.emit("update-progress", progress);
+            },
+            || {},
+        )
+        .await
+        .map_err(|e| e.to_string())?;
     }
     Ok(())
 }

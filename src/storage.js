@@ -2,10 +2,12 @@ import { invoke } from "@tauri-apps/api/core";
 
 let saveTimer = null;
 
+export const SCHEMA_VERSION = 2;
+
 export function saveState(data) {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
-    try { await invoke("save_app_state", { state: JSON.stringify(data) }); }
+    try { await invoke("save_app_state", { state: JSON.stringify({ ...data, schemaVersion: SCHEMA_VERSION }) }); }
     catch (e) { console.error("Failed to save:", e); }
   }, 800);
 }

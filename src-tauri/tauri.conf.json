@@ -45,6 +45,11 @@
     ],
     "shortDescription": "Music project organizer for producers and engineers",
     "longDescription": "TrackFlow automatically finds your FL Studio, Ableton, and Pro Tools projects and lets you organize them your way.",
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": true,
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
   }
 }
