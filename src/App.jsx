@@ -148,17 +148,20 @@ function App() {
     applyResponsiveLayout(layoutView);
   }, [ready, layoutView, applyResponsiveLayout]);
 
+  function applyLoadedState(saved) {
+    if (!saved) return;
+    setMode(saved.mode); setProducerCols(saved.producerCols); setEngineerCols(saved.engineerCols);
+    setProducerLayout(saved.producerLayout); setEngineerLayout(saved.engineerLayout);
+    setProjects(saved.projects); setWatchedFolders(saved.watchedFolders); setCustomTags(saved.customTags);
+    setThemePreset(saved.themePreset); setThemeCustom(saved.themeCustom); setFont(saved.font);
+    setColMaxHeight(saved.colMaxHeight); setCollapsedCols(saved.collapsedCols); setLockedCols(saved.lockedCols);
+    setDiscordWebhook(saved.discordWebhook); setWebhookUrl(saved.discordWebhook);
+  }
+
+  // Initial load on mount
   useEffect(() => {
     loadState().then(raw => {
-      const saved = migrateState(raw);
-      if (saved) {
-        setMode(saved.mode); setProducerCols(saved.producerCols); setEngineerCols(saved.engineerCols);
-        setProducerLayout(saved.producerLayout); setEngineerLayout(saved.engineerLayout);
-        setProjects(saved.projects); setWatchedFolders(saved.watchedFolders); setCustomTags(saved.customTags);
-        setThemePreset(saved.themePreset); setThemeCustom(saved.themeCustom); setFont(saved.font);
-        setColMaxHeight(saved.colMaxHeight); setCollapsedCols(saved.collapsedCols); setLockedCols(saved.lockedCols);
-        setDiscordWebhook(saved.discordWebhook); setWebhookUrl(saved.discordWebhook);
-      }
+      applyLoadedState(migrateState(raw));
       setReady(true);
     });
   }, []);
@@ -207,6 +210,20 @@ function App() {
 
   // Auto-close auth modal when sign-in succeeds
   useEffect(() => { if (user) setShowAuthModal(false); }, [user]);
+
+  // When user signs in mid-session (from the offline modal), pull their cloud state
+  const prevUserIdRef = useRef(null);
+  useEffect(() => {
+    if (!user || !ready) return;
+    if (prevUserIdRef.current === user.id) return; // same user, no-op
+    const isNewSignIn = prevUserIdRef.current === null;
+    prevUserIdRef.current = user.id;
+    if (!isNewSignIn) return; // switching accounts — skip to avoid overwrite
+    loadState().then(raw => {
+      const saved = migrateState(raw);
+      if (saved) applyLoadedState(saved);
+    });
+  }, [user, ready]);
 
   // Still resolving auth session — show a minimal splash
   if (authLoading) return (
