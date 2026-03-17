@@ -1,0 +1,38 @@
+import { invoke } from "@tauri-apps/api/core";
+
+let saveTimer = null;
+
+// Debounced save — waits 800ms after last change before writing
+export function saveState(data) {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await invoke("save_app_state", { state: JSON.stringify(data) });
+    } catch (e) { 
+      console.error("Failed to save state:", e);
+    }
+  }, 800);
+}
+
+// Load state from AppData on startup
+export async function loadState() {
+  try {
+    const raw = await invoke("load_app_state");
+    if (!raw || raw === "") return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("Failed to load state:", e);
+    return null;
+  }
+}
+
+// Manual backup trigger
+export async function backupState() {
+  try {
+    const path = await invoke("backup_app_state");
+    return path;
+  } catch (e) {
+    console.error("Failed to backup:", e);
+    return null;
+  }
+}

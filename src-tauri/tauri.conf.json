@@ -1,0 +1,50 @@
+{
+  "productName": "TrackFlow",
+  "version": "1.2.0",
+  "identifier": "com.trackflow.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "TrackFlow",
+        "width": 1400,
+        "height": 860,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; media-src 'self' asset: https://asset.localhost; connect-src ipc: http://ipc.localhost https://discord.com https://fonts.googleapis.com https://fonts.gstatic.com https://github.com https://objects.githubusercontent.com"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/YOUR_GITHUB_USERNAME/trackflow/releases/latest/download/latest.json"
+      ],
+      "dialog": false,
+      "pubkey": "REPLACE_WITH_YOUR_PUBLIC_KEY_AFTER_RUNNING_tauri_signer_generate"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "shortDescription": "Music project organizer for producers and engineers",
+    "longDescription": "TrackFlow automatically finds your FL Studio, Ableton, and Pro Tools projects and lets you organize them your way.",
+    "createUpdaterArtifacts": true
+  }
+}
