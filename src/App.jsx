@@ -21,9 +21,12 @@ import SettingsPanel from "./components/SettingsPanel";
 import TagManager from "./components/TagManager";
 import SortFilterDropdown from "./components/SortFilterDropdown";
 import { Icon, Icons } from "./components/Icon";
+import { AuthScreenInner } from "./components/AuthScreen";
+import { useAuth } from "./hooks/useAuth";
 import "./App.css";
 
 function App() {
+  const { user, loading: authLoading, isOffline, initial, signIn, signUp, signOut, goOffline } = useAuth();
   const [ready, setReady] = useState(false);
   const [mode, setMode] = useState("producer");
   const [producerCols, setProducerCols] = useState(PRODUCER_COLUMNS);
@@ -201,6 +204,19 @@ function App() {
     return () => { try { document.head.removeChild(el); } catch (e) {} };
   }, [font]);
 
+  // Still resolving auth session — show a minimal splash
+  if (authLoading) return (
+    <div style={{ height: "100vh", background: "#0a0a0b", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Syne, sans-serif", flexDirection: "column", gap: 12 }}>
+      <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0" }}>Track<span style={{ color: "#c8ff47" }}>Flow</span></div>
+    </div>
+  );
+
+  // Not signed in and not in offline mode — show auth screen
+  if (!user && !isOffline) return (
+    <AuthScreenInner signIn={signIn} signUp={signUp} onOffline={goOffline} />
+  );
+
+  // State is loading from disk
   if (!ready) return (
     <div style={{ height: "100vh", background: "#0a0a0b", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Syne, sans-serif", flexDirection: "column", gap: 12 }}>
       <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0" }}>Track<span style={{ color: "#c8ff47" }}>Flow</span></div>
@@ -607,7 +623,14 @@ function App() {
             <Icon d={btn.icon} size={13} />
           </button>
         ))}
-        <div style={{ width: 28, height: 28, borderRadius: "50%", background: `linear-gradient(135deg, ${theme.accent}, #47c8ff)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: theme.accentText }}>KD</div>
+        <div
+          title={user ? `Signed in as ${user.email}` : "Offline mode"}
+          onClick={user ? signOut : undefined}
+          style={{ width: 28, height: 28, borderRadius: "50%", background: user ? `linear-gradient(135deg, ${theme.accent}, #47c8ff)` : theme.surface3, border: user ? "none" : `1px solid ${theme.border2}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: user ? theme.accentText : theme.text3, cursor: user ? "pointer" : "default", flexShrink: 0 }}
+          onMouseEnter={e => { if (user) e.currentTarget.style.opacity = "0.8"; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}>
+          {initial ?? "~"}
+        </div>
       </div>
 
       <div style={{ height: 2, background: `linear-gradient(90deg, ${modeAccent}99, transparent)`, flexShrink: 0 }} />
