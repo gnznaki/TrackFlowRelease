@@ -23,5 +23,9 @@ export function migrateState(saved) {
     discordWebhook: saved.discordWebhook || "",
     collapsedCols: saved.collapsedCols || [],
     lockedCols: saved.lockedCols || [],
+    // Phase 3: stable board IDs used as Supabase keys for shared boards
+    producerBoardId: saved.producerBoardId || crypto.randomUUID(),
+    engineerBoardId: saved.engineerBoardId || crypto.randomUUID(),
+    sharedBoards: saved.sharedBoards || [],
   };
 }

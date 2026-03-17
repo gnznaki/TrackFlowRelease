@@ -23,6 +23,8 @@ import SortFilterDropdown from "./components/SortFilterDropdown";
 import { Icon, Icons } from "./components/Icon";
 import { AuthScreenInner } from "./components/AuthScreen";
 import { useAuth } from "./hooks/useAuth";
+import { useCollabBoard } from "./hooks/useCollabBoard";
+import ShareModal from "./components/ShareModal";
 import "./App.css";
 
 function App() {
@@ -60,6 +62,10 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [errorLog, setErrorLog] = useState([]);
   const [showErrorBar, setShowErrorBar] = useState(false);
+  const [producerBoardId, setProducerBoardId] = useState(() => crypto.randomUUID());
+  const [engineerBoardId, setEngineerBoardId] = useState(() => crypto.randomUUID());
+  const [sharedBoards, setSharedBoards] = useState([]);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const theme = buildTheme(themeCustom.bg, themeCustom.cardBg, themeCustom.borderHex, themeCustom.accent, font);
   const columns = mode === "producer" ? producerCols : engineerCols;
@@ -78,6 +84,71 @@ function App() {
   const lastColumnOverRef = useRef(null);
   const rafColumnReorderRef = useRef(null);
   const savedGridLayoutRef = useRef({ producer: null, engineer: null });
+
+  // Stable remote-update callbacks (setters never change identity)
+  const handleProducerRemoteUpdate = useCallback((cols, lyt) => {
+    setProducerCols(cols);
+    setProducerLayout(lyt);
+  }, []);
+
+  const handleEngineerRemoteUpdate = useCallback((cols, lyt) => {
+    setEngineerCols(cols);
+    setEngineerLayout(lyt);
+  }, []);
+
+  const currentBoardId = mode === "producer" ? producerBoardId : engineerBoardId;
+  const isCurrentBoardShared = sharedBoards.includes(currentBoardId);
+
+  const { shareBoard: shareProducerBoard, joinBoard, leaveBoard, fetchMembers: fetchProducerMembers } = useCollabBoard({
+    boardId: producerBoardId,
+    isShared: sharedBoards.includes(producerBoardId),
+    columns: producerCols,
+    layout: producerLayout,
+    mode: "producer",
+    onRemoteUpdate: handleProducerRemoteUpdate,
+  });
+
+  const { shareBoard: shareEngineerBoard, fetchMembers: fetchEngineerMembers } = useCollabBoard({
+    boardId: engineerBoardId,
+    isShared: sharedBoards.includes(engineerBoardId),
+    columns: engineerCols,
+    layout: engineerLayout,
+    mode: "engineer",
+    onRemoteUpdate: handleEngineerRemoteUpdate,
+  });
+
+  async function handleShareBoard() {
+    const fn = mode === "producer" ? shareProducerBoard : shareEngineerBoard;
+    const name = mode === "producer" ? "Producer Board" : "Engineer Board";
+    const err = await fn(name);
+    if (err) return err;
+    setSharedBoards(prev => [...new Set([...prev, currentBoardId])]);
+    return null;
+  }
+
+  async function handleJoinBoard(code) {
+    const { board, error } = await joinBoard(code);
+    if (error) return error;
+    if (board.mode === "producer") {
+      setProducerBoardId(board.id);
+      setProducerCols(board.columns);
+      setProducerLayout(board.layout);
+    } else {
+      setEngineerBoardId(board.id);
+      setEngineerCols(board.columns);
+      setEngineerLayout(board.layout);
+    }
+    setSharedBoards(prev => [...new Set([...prev, board.id])]);
+    return null;
+  }
+
+  async function handleLeaveBoard(boardId) {
+    await leaveBoard(boardId);
+    setSharedBoards(prev => prev.filter(id => id !== boardId));
+    // Generate a fresh personal board ID so this user's data is no longer linked
+    if (boardId === producerBoardId) setProducerBoardId(crypto.randomUUID());
+    else if (boardId === engineerBoardId) setEngineerBoardId(crypto.randomUUID());
+  }
 
   function flattenLayout(lyt) {
     return (lyt || []).flat().map(String);
@@ -156,6 +227,9 @@ function App() {
     setThemePreset(saved.themePreset); setThemeCustom(saved.themeCustom); setFont(saved.font);
     setColMaxHeight(saved.colMaxHeight); setCollapsedCols(saved.collapsedCols); setLockedCols(saved.lockedCols);
     setDiscordWebhook(saved.discordWebhook); setWebhookUrl(saved.discordWebhook);
+    if (saved.producerBoardId) setProducerBoardId(saved.producerBoardId);
+    if (saved.engineerBoardId) setEngineerBoardId(saved.engineerBoardId);
+    if (saved.sharedBoards) setSharedBoards(saved.sharedBoards);
   }
 
   // Initial load on mount
@@ -177,8 +251,8 @@ function App() {
 
   useEffect(() => {
     if (!ready) return;
-    saveState({ mode, producerCols, engineerCols, producerLayout, engineerLayout, projects, watchedFolders, customTags, themePreset, themeCustom, font, colMaxHeight, discordWebhook, collapsedCols, lockedCols });
-  }, [ready, mode, producerCols, engineerCols, producerLayout, engineerLayout, projects, watchedFolders, customTags, themePreset, themeCustom, font, colMaxHeight, discordWebhook, collapsedCols, lockedCols]);
+    saveState({ mode, producerCols, engineerCols, producerLayout, engineerLayout, projects, watchedFolders, customTags, themePreset, themeCustom, font, colMaxHeight, discordWebhook, collapsedCols, lockedCols, producerBoardId, engineerBoardId, sharedBoards });
+  }, [ready, mode, producerCols, engineerCols, producerLayout, engineerLayout, projects, watchedFolders, customTags, themePreset, themeCustom, font, colMaxHeight, discordWebhook, collapsedCols, lockedCols, producerBoardId, engineerBoardId, sharedBoards]);
 
   // Orphan cleanup — ref pattern avoids #105 loop
   const orphanRef = useRef(null);
@@ -583,6 +657,19 @@ function App() {
 
   return (
     <div style={{ fontFamily: font || "Syne", background: theme.bg, color: theme.text, height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", transition: "background 0.3s" }}>
+      {showShareModal && user && <ShareModal
+        boardId={currentBoardId}
+        boardName={mode === "producer" ? "Producer Board" : "Engineer Board"}
+        mode={mode}
+        isShared={isCurrentBoardShared}
+        user={user}
+        onShare={handleShareBoard}
+        onJoin={handleJoinBoard}
+        onLeave={handleLeaveBoard}
+        fetchMembers={mode === "producer" ? fetchProducerMembers : fetchEngineerMembers}
+        onClose={() => setShowShareModal(false)}
+        theme={theme}
+      />}
       {showTagManager && <TagManager allTags={customTags} onAddTag={tag => { if (!customTags.find(t => t.label === tag.label)) setCustomTags(p => [...p, tag]); }} onDeleteTag={l => setCustomTags(p => p.filter(t => t.label !== l))} onClose={() => setShowTagManager(false)} theme={theme} />}
       {showThemeCustomizer && <ThemeCustomizer themePreset={themePreset} themeCustom={themeCustom} font={font} onApply={(preset, custom, f) => { setThemePreset(preset); setThemeCustom(custom); setFont(f); setShowThemeCustomizer(false); }} onClose={() => setShowThemeCustomizer(false)} theme={theme} />}
       {showSettings && <SettingsPanel discordWebhook={discordWebhook} colMaxHeight={colMaxHeight} onSave={(wh, mh) => { setDiscordWebhook(wh); setWebhookUrl(wh); setColMaxHeight(mh); setShowSettings(false); }} onClose={() => setShowSettings(false)} theme={theme} />}
@@ -640,6 +727,17 @@ function App() {
             <Icon d={btn.icon} size={13} />
           </button>
         ))}
+
+        {/* Collaborate button — glows when board is shared */}
+        {user && (
+          <button onClick={() => setShowShareModal(true)} title={isCurrentBoardShared ? "Board is shared — manage collaboration" : "Share or join a board"}
+            style={{ position: "relative", width: 32, height: 32, borderRadius: theme.r, border: `1px solid ${isCurrentBoardShared ? theme.accent + "60" : theme.border}`, background: isCurrentBoardShared ? `rgba(${theme.accentRgb},0.1)` : theme.surface2, color: isCurrentBoardShared ? theme.accent : theme.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+            onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.borderColor = theme.accent + "60"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = isCurrentBoardShared ? theme.accent : theme.text2; e.currentTarget.style.borderColor = isCurrentBoardShared ? theme.accent + "60" : theme.border; }}>
+            <Icon d={Icons.users} size={13} />
+            {isCurrentBoardShared && <span style={{ position: "absolute", top: 5, right: 5, width: 6, height: 6, borderRadius: "50%", background: theme.accent }} />}
+          </button>
+        )}
         <div
           title={user ? `Signed in as ${user.email} — click to sign out` : "Click to sign in or create account"}
           onClick={user ? signOut : () => setShowAuthModal(true)}
