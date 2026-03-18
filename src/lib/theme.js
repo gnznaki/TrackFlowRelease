@@ -80,6 +80,7 @@ export function buildTheme(bg, cardBg, borderHex, accent, font) {
   const safeCard = safeCardBg(cardBg?.startsWith("#") ? cardBg : "#18181d", safeBg);
   bg = safeBg; accent = safeAcc; cardBg = safeCard;
   const isDark = getLuminance(bg) < 0.5;
+  const isCardDark = getLuminance(cardBg) < 0.5;
   const shift = isDark ? 0.04 : -0.03;
   const { r: ar, g: ag, b: ab } = hexToRgb(accent.startsWith("#") ? accent : "#c8ff47");
   return {
@@ -87,12 +88,16 @@ export function buildTheme(bg, cardBg, borderHex, accent, font) {
     bg,
     surface: shiftHex(bg, shift),
     surface2: cardBg,
-    surface3: shiftHex(cardBg, isDark ? 0.05 : -0.04),
+    surface3: shiftHex(cardBg, isCardDark ? 0.05 : -0.04),
     border: withAlpha(borderHex?.startsWith("#") ? borderHex : "#ffffff", isDark ? 0.18 : 0.14),
     border2: withAlpha(borderHex?.startsWith("#") ? borderHex : "#ffffff", isDark ? 0.3 : 0.24),
     text: isDark ? "#f0f0f0" : "#1a1a1a",
     text2: isDark ? "#888888" : "#666666",
     text3: isDark ? "#555555" : "#999999",
+    // Card-specific text colors — derived from cardBg, not bg
+    cardText:  isCardDark ? "#f0f0f0" : "#1a1a1a",
+    cardText2: isCardDark ? "#888888" : "#555555",
+    cardText3: isCardDark ? "#555555" : "#999999",
     accent,
     accentText: contrastText(accent),
     accentRgb: `${ar},${ag},${ab}`,

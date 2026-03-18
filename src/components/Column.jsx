@@ -50,20 +50,20 @@ export function CardContent({ card, isSelected, onDelete, isDragging, allTags, t
       {onDelete && (
         <div
           onClick={e => { e.stopPropagation(); onDelete(card.id); }}
-          style={{ position: "absolute", top: 8, right: 8, width: 18, height: 18, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: theme.text3 }}
+          style={{ position: "absolute", top: 8, right: 8, width: 18, height: 18, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: theme.cardText3 }}
           onMouseEnter={e => e.currentTarget.style.color = "#ff5050"}
-          onMouseLeave={e => e.currentTarget.style.color = theme.text3}
+          onMouseLeave={e => e.currentTarget.style.color = theme.cardText3}
         >
           <Icon d={Icons.close} size={11} />
         </div>
       )}
 
       {/* Title row — leave room for badge */}
-      <div style={{ fontSize: 13, fontWeight: 700, color: theme.text, lineHeight: 1.3, paddingRight: 52, marginBottom: 5 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: theme.cardText, lineHeight: 1.3, paddingRight: 52, marginBottom: 5 }}>
         {card.title}
       </div>
 
-      <div style={{ fontFamily: "monospace", fontSize: 10, color: theme.text3, opacity: 0.7, marginBottom: 7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div style={{ fontFamily: "monospace", fontSize: 10, color: theme.cardText3, opacity: 0.7, marginBottom: 7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {card.path}
       </div>
 
@@ -75,12 +75,12 @@ export function CardContent({ card, isSelected, onDelete, isDragging, allTags, t
       </div>
 
       {card.note && (
-        <div style={{ fontSize: 11, color: theme.text2, background: theme.surface3, borderRadius: theme.r - 2, padding: "5px 8px", borderLeft: `2px solid ${theme.border2}`, marginBottom: 7 }}>
+        <div style={{ fontSize: 11, color: theme.cardText2, background: theme.surface3, borderRadius: theme.r - 2, padding: "5px 8px", borderLeft: `2px solid ${theme.border2}`, marginBottom: 7 }}>
           {card.note}
         </div>
       )}
 
-      <div style={{ fontSize: 10, fontFamily: "monospace", color: theme.text3, borderTop: `1px solid ${theme.border}`, marginTop: 6, paddingTop: 6 }}>
+      <div style={{ fontSize: 10, fontFamily: "monospace", color: theme.cardText3, borderTop: `1px solid ${theme.border}`, marginTop: 6, paddingTop: 6 }}>
         {card.date}
       </div>
     </div>
