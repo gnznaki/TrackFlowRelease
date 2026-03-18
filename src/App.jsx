@@ -453,8 +453,30 @@ function App() {
   function handleMoveToNewRow(colId) {
     setLayout(current => {
       if (current.length >= 4) { alert("Maximum 4 rows reached."); return current; }
+      const rowIdx = current.findIndex(row => row.includes(String(colId)));
+      const wasAlone = rowIdx !== -1 && current[rowIdx].length === 1;
       const newLayout = current.map(row => row.filter(id => id !== String(colId))).filter(row => row.length > 0);
-      return [...newLayout, [String(colId)]];
+      // Insert immediately below the current row; if column was alone its row
+      // disappears so we use rowIdx, otherwise rowIdx+1 to go below the row.
+      const insertAt = rowIdx === -1
+        ? newLayout.length
+        : wasAlone
+        ? Math.min(rowIdx, newLayout.length)
+        : Math.min(rowIdx + 1, newLayout.length);
+      newLayout.splice(insertAt, 0, [String(colId)]);
+      return newLayout;
+    });
+  }
+
+  function handleAddColToNewRow(afterRowIdx) {
+    const title = prompt("Column name:"); if (!title) return;
+    const newId = Date.now().toString();
+    setColumns(cols => [...cols, { id: newId, title, color: theme.accent, cards: [] }]);
+    setLayout(prev => {
+      if (prev.length >= 4) { alert("Maximum 4 rows reached."); return prev; }
+      const next = [...prev];
+      next.splice(afterRowIdx + 1, 0, [newId]);
+      return next;
     });
   }
 
@@ -590,29 +612,40 @@ function App() {
 
     const overIdStr = String(over.id);
     const isZone = overIdStr.startsWith("zone-");
-    // overCardId is set when hovering directly over another card (use its position)
-    // targetColId is set when hovering over an empty drop zone
     const overCardId = isZone ? null : overIdStr;
     const targetColId = isZone ? overIdStr.replace("zone-", "") : null;
 
-    const cols = columnsRef.current;
-    const src = cols.find(col => col.cards.some(c => c.id === active.id));
-    const dst = targetColId
-      ? cols.find(c => c.id === targetColId)
-      : cols.find(col => col.cards.some(c => c.id === overCardId));
-
-    if (!src || !dst || src.id === dst.id || lockedCols.includes(dst.id) || lockedCols.includes(src.id)) return;
-
     setColumns(cols => {
       const currentSrc = cols.find(col => col.cards.some(c => c.id === active.id));
-      if (!currentSrc || currentSrc.id === dst.id) return cols;
+      if (!currentSrc) return cols;
+      const currentDst = targetColId
+        ? cols.find(c => c.id === targetColId)
+        : cols.find(col => col.cards.some(c => c.id === overCardId));
+      if (!currentDst) return cols;
+      if (lockedCols.includes(currentDst.id) || lockedCols.includes(currentSrc.id)) return cols;
       const card = currentSrc.cards.find(c => c.id === active.id);
       if (!card) return cols;
+
+      if (currentSrc.id === currentDst.id) {
+        // Same column — live reorder as cursor moves over other cards
+        if (!overCardId || overCardId === active.id) return cols;
+        return cols.map(col => {
+          if (col.id !== currentDst.id) return col;
+          const fromIdx = col.cards.findIndex(c => c.id === active.id);
+          const toIdx = col.cards.findIndex(c => c.id === overCardId);
+          if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return col;
+          const next = [...col.cards];
+          next.splice(fromIdx, 1);
+          next.splice(toIdx, 0, card);
+          return { ...col, cards: next };
+        });
+      }
+
+      // Cross-column move — insert at hovered card position or append to end
       return cols.map(col => {
         if (col.id === currentSrc.id) return { ...col, cards: col.cards.filter(c => c.id !== active.id) };
-        if (col.id === dst.id) {
+        if (col.id === currentDst.id) {
           if (overCardId) {
-            // Insert at the position of the card being hovered over
             const overIdx = col.cards.findIndex(c => c.id === overCardId);
             if (overIdx >= 0) {
               const next = [...col.cards];
@@ -620,7 +653,6 @@ function App() {
               return { ...col, cards: next };
             }
           }
-          // Hovering over empty zone — append to end
           return { ...col, cards: [...col.cards, card] };
         }
         return col;
@@ -1104,40 +1136,56 @@ function App() {
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "auto", opacity: modeTransition ? 0 : 1, transition: "opacity 0.25s, background 0.4s", background: `rgba(${hexToRgbInline(modeAccent)},0.025)` }}>
             <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 16, minWidth: "fit-content" }}>
               {layout.map((rowColIds, rowIdx) => (
-                <RowDropZone key={rowIdx} id={`row-${rowIdx}`} isGridView={isGridView} isCardDrag={isCardDrag} activeColId={activeColId} theme={theme}>
-                  <SortableContext items={rowColIds} strategy={horizontalListSortingStrategy}>
-                    <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                      {rowColIds.map(colId => {
-                        const col = columns.find(c => c.id === colId);
-                        if (!col) return null;
-                        return (
-                          <SortableColumn key={col.id} col={col}
-                            selectedCard={selectedCard} onSelectCard={handleSelectCard}
-                            onAddCard={handleAddCard} onDeleteCard={handleDeleteCard}
-                            onOpenInDaw={handleOpenInDaw}
-                            onRenameCol={handleRenameCol} onDeleteCol={handleDeleteCol}
-                            onDuplicateCol={handleDuplicateCol} onChangeColor={handleChangeColColor}
-                            onToggleCollapse={handleToggleCollapse} onToggleLock={handleToggleLock}
-                            onClearCol={handleClearCol}
-                            onMoveRowUp={handleMoveRowUp} onMoveRowDown={handleMoveRowDown} onMoveToNewRow={handleMoveToNewRow}
-                            allTags={customTags} sortBy={sortBy} sortDir={sortDir}
-                            activeFilters={activeTagFilters} searchQuery={searchQuery} theme={theme}
-                            isCardDrag={isCardDrag}
-                            isCollapsed={collapsedCols.includes(col.id)} isLocked={lockedCols.includes(col.id)}
-                            colMaxHeight={colMaxHeight}
-                            canMoveUp={isGridView && rowIdx > 0} canMoveDown={isGridView && (layout.length < 4 || rowIdx < layout.length - 1)} />
-                        );
-                      })}
-                      {rowIdx === layout.length - 1 && (
-                        <button onClick={handleAddCol} style={{ flexShrink: 0, width: 46, minHeight: 80, background: "transparent", border: `1px dashed ${theme.border}`, borderRadius: theme.r2, color: theme.text3, opacity: 0.55, cursor: "pointer", alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "center", transition: "opacity 0.15s, border-color 0.15s" }}
-                          onMouseEnter={e => { e.currentTarget.style.opacity = 0.9; e.currentTarget.style.borderColor = theme.accent; }}
-                          onMouseLeave={e => { e.currentTarget.style.opacity = 0.55; e.currentTarget.style.borderColor = theme.border; }}>
-                          <Icon d={Icons.plus} size={18} />
-                        </button>
-                      )}
+                <div key={rowIdx} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                  <RowDropZone id={`row-${rowIdx}`} isGridView={isGridView} isCardDrag={isCardDrag} activeColId={activeColId} theme={theme}>
+                    <SortableContext items={rowColIds} strategy={horizontalListSortingStrategy}>
+                      <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                        {rowColIds.map(colId => {
+                          const col = columns.find(c => c.id === colId);
+                          if (!col) return null;
+                          return (
+                            <SortableColumn key={col.id} col={col}
+                              selectedCard={selectedCard} onSelectCard={handleSelectCard}
+                              onAddCard={handleAddCard} onDeleteCard={handleDeleteCard}
+                              onOpenInDaw={handleOpenInDaw}
+                              onRenameCol={handleRenameCol} onDeleteCol={handleDeleteCol}
+                              onDuplicateCol={handleDuplicateCol} onChangeColor={handleChangeColColor}
+                              onToggleCollapse={handleToggleCollapse} onToggleLock={handleToggleLock}
+                              onClearCol={handleClearCol}
+                              onMoveRowUp={handleMoveRowUp} onMoveRowDown={handleMoveRowDown} onMoveToNewRow={handleMoveToNewRow}
+                              allTags={customTags} sortBy={sortBy} sortDir={sortDir}
+                              activeFilters={activeTagFilters} searchQuery={searchQuery} theme={theme}
+                              isCardDrag={isCardDrag}
+                              isCollapsed={collapsedCols.includes(col.id)} isLocked={lockedCols.includes(col.id)}
+                              colMaxHeight={colMaxHeight}
+                              canMoveUp={isGridView && rowIdx > 0} canMoveDown={isGridView && (layout.length < 4 || rowIdx < layout.length - 1)} />
+                          );
+                        })}
+                        {rowIdx === layout.length - 1 && (
+                          <button onClick={handleAddCol} style={{ flexShrink: 0, width: 46, minHeight: 80, background: "transparent", border: `1px dashed ${theme.border}`, borderRadius: theme.r2, color: theme.text3, opacity: 0.55, cursor: "pointer", alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "center", transition: "opacity 0.15s, border-color 0.15s" }}
+                            onMouseEnter={e => { e.currentTarget.style.opacity = 0.9; e.currentTarget.style.borderColor = theme.accent; }}
+                            onMouseLeave={e => { e.currentTarget.style.opacity = 0.55; e.currentTarget.style.borderColor = theme.border; }}>
+                            <Icon d={Icons.plus} size={18} />
+                          </button>
+                        )}
+                      </div>
+                    </SortableContext>
+                  </RowDropZone>
+                  {isGridView && layout.length < 4 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", opacity: 0, transition: "opacity 0.15s" }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                      onMouseLeave={e => e.currentTarget.style.opacity = 0}>
+                      <div style={{ flex: 1, height: 1, background: theme.border }} />
+                      <button onClick={() => handleAddColToNewRow(rowIdx)}
+                        style={{ flexShrink: 0, padding: "2px 10px", background: "transparent", border: `1px dashed ${theme.border}`, borderRadius: theme.r, color: theme.text3, fontSize: 11, cursor: "pointer", fontFamily: font || "Syne", whiteSpace: "nowrap" }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.color = theme.accent; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.text3; }}>
+                        + Row
+                      </button>
+                      <div style={{ flex: 1, height: 1, background: theme.border }} />
                     </div>
-                  </SortableContext>
-                </RowDropZone>
+                  )}
+                </div>
               ))}
 
               {/* Empty state for pages with no columns */}
