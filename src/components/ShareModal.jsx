@@ -1,17 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-export default function ShareModal({ boardId, boardName, mode, isShared, user, onShare, onJoin, onLeave, fetchMembers, onClose, theme }) {
+export default function ShareModal({ boardId, boardName, mode, isShared, user, members, myRole, onShare, onJoin, onLeave, onDelete, onClose, theme }) {
   const [tab, setTab] = useState("share");
   const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [members, setMembers] = useState([]);
-
-  useEffect(() => {
-    if (isShared) fetchMembers().then(setMembers);
-  }, [isShared, fetchMembers]);
 
   function switchTab(t) { setTab(t); setError(null); setSuccess(null); }
 
@@ -21,7 +16,6 @@ export default function ShareModal({ boardId, boardName, mode, isShared, user, o
     setLoading(false);
     if (err) { setError(err); return; }
     setSuccess("Board shared! Give the code above to your collaborators.");
-    fetchMembers().then(setMembers);
   }
 
   async function handleJoin() {
@@ -45,7 +39,14 @@ export default function ShareModal({ boardId, boardName, mode, isShared, user, o
     onClose();
   }
 
-  const C = theme; // alias
+  async function handleDelete() {
+    if (!window.confirm("Delete this shared board? All collaborators will lose access immediately.")) return;
+    await onDelete(boardId);
+    onClose();
+  }
+
+  const C = theme;
+  const isOwner = myRole === "owner";
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10001, fontFamily: C.font || "Syne" }}
@@ -62,7 +63,7 @@ export default function ShareModal({ boardId, boardName, mode, isShared, user, o
         </div>
 
         {/* Tab bar */}
-        <div style={{ display: "flex", background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "0 18px", gap: 0 }}>
+        <div style={{ display: "flex", background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "0 18px" }}>
           {[["share", "Share Board"], ["join", "Join Board"]].map(([key, label]) => (
             <button key={key} onClick={() => switchTab(key)}
               style={{ padding: "10px 14px", background: "transparent", border: "none", borderBottom: tab === key ? `2px solid ${C.accent}` : "2px solid transparent", color: tab === key ? C.text : C.text3, fontFamily: C.font || "Syne", fontSize: 12, fontWeight: tab === key ? 700 : 400, cursor: "pointer", marginBottom: -1 }}>
@@ -115,7 +116,7 @@ export default function ShareModal({ boardId, boardName, mode, isShared, user, o
                       {members.map(m => (
                         <div key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: C.surface, borderRadius: C.r, border: `1px solid ${C.border}` }}>
                           <div style={{ width: 26, height: 26, borderRadius: "50%", background: m.user_id === user?.id ? `linear-gradient(135deg, ${C.accent}, #47c8ff)` : C.surface3, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: m.user_id === user?.id ? C.accentText : C.text3, flexShrink: 0 }}>
-                            {(m.profile?.email?.[0] ?? "?").toUpperCase()}
+                            {(m.profile?.display_name?.[0] ?? m.profile?.email?.[0] ?? "?").toUpperCase()}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 12, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -130,10 +131,18 @@ export default function ShareModal({ boardId, boardName, mode, isShared, user, o
                       ))}
                     </div>
                   )}
-                  <button onClick={handleLeave}
-                    style={{ width: "100%", padding: "8px 0", background: "transparent", border: `1px solid ${C.border}`, borderRadius: C.r, color: C.text3, fontFamily: C.font || "Syne", fontSize: 12, cursor: "pointer" }}>
-                    Leave board
-                  </button>
+
+                  {isOwner ? (
+                    <button onClick={handleDelete}
+                      style={{ width: "100%", padding: "8px 0", background: "transparent", border: "1px solid rgba(255,80,80,0.3)", borderRadius: C.r, color: "#ff5050", fontFamily: C.font || "Syne", fontSize: 12, cursor: "pointer" }}>
+                      Delete shared board
+                    </button>
+                  ) : (
+                    <button onClick={handleLeave}
+                      style={{ width: "100%", padding: "8px 0", background: "transparent", border: `1px solid ${C.border}`, borderRadius: C.r, color: C.text3, fontFamily: C.font || "Syne", fontSize: 12, cursor: "pointer" }}>
+                      Leave board
+                    </button>
+                  )}
                 </>
               )}
             </div>

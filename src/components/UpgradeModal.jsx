@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { startCheckout, openCustomerPortal } from "../lib/stripe";
+import { openCustomerPortal } from "../lib/stripe";
+import CheckoutModal from "./CheckoutModal";
 
 const PLANS = [
   {
@@ -36,7 +37,7 @@ const PLANS = [
   },
   {
     key: "ongoing",
-    name: "On-Going",
+    name: "Cloud",
     price: "$20",
     sub: "/ month",
     priceKey: "ongoing_monthly",
@@ -63,14 +64,11 @@ function Check({ color }) {
 export default function UpgradeModal({ tier, onClose, theme }) {
   const [loading, setLoading] = useState(null);
   const [error, setError] = useState(null);
+  const [checkoutPriceKey, setCheckoutPriceKey] = useState(null);
   const C = theme;
 
-  async function handleUpgrade(priceKey) {
-    setLoading(priceKey);
-    setError(null);
-    const { error: err } = await startCheckout(priceKey);
-    setLoading(null);
-    if (err) setError(err);
+  function handleUpgrade(priceKey) {
+    setCheckoutPriceKey(priceKey);
   }
 
   async function handlePortal() {
@@ -145,12 +143,11 @@ export default function UpgradeModal({ tier, onClose, theme }) {
                 {plan.cta && !isCurrent && (
                   <button
                     onClick={() => handleUpgrade(plan.priceKey)}
-                    disabled={loading === plan.priceKey}
-                    style={{ width: "100%", padding: "10px 0", background: plan.popular ? C.accent : "transparent", border: `1px solid ${accentColor}`, borderRadius: C.r, color: plan.popular ? C.accentText : accentColor, fontFamily: C.font || "Syne", fontSize: 12, fontWeight: 700, cursor: loading === plan.priceKey ? "default" : "pointer", opacity: loading === plan.priceKey ? 0.6 : 1, transition: "all 0.15s" }}
+                    style={{ width: "100%", padding: "10px 0", background: plan.popular ? C.accent : "transparent", border: `1px solid ${accentColor}`, borderRadius: C.r, color: plan.popular ? C.accentText : accentColor, fontFamily: C.font || "Syne", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }}
                     onMouseEnter={e => { if (!plan.popular) e.currentTarget.style.background = accentColor + "15"; }}
                     onMouseLeave={e => { if (!plan.popular) e.currentTarget.style.background = "transparent"; }}
                   >
-                    {loading === plan.priceKey ? "Opening checkout…" : plan.cta}
+                    {plan.cta}
                   </button>
                 )}
                 {isCurrent && plan.key !== "free" && (
@@ -166,7 +163,7 @@ export default function UpgradeModal({ tier, onClose, theme }) {
 
         <div style={{ padding: "0 24px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 11, color: C.text3 }}>
-            Checkout opens in your browser. Your plan updates automatically once payment completes.
+            Your plan updates automatically once payment completes.
           </div>
           {isPaying && (
             <button onClick={handlePortal} style={{ background: "transparent", border: "none", color: C.text3, fontFamily: C.font || "Syne", fontSize: 11, cursor: "pointer", padding: 0, textDecoration: "underline" }}>
@@ -181,6 +178,15 @@ export default function UpgradeModal({ tier, onClose, theme }) {
           </div>
         )}
       </div>
+
+      {checkoutPriceKey && (
+        <CheckoutModal
+          priceKey={checkoutPriceKey}
+          theme={C}
+          onClose={() => setCheckoutPriceKey(null)}
+          onSuccess={() => { setCheckoutPriceKey(null); onClose(); }}
+        />
+      )}
     </div>
   );
 }

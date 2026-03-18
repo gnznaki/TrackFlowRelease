@@ -29,10 +29,12 @@ export function CardContent({ card, isSelected, onDelete, isDragging, allTags, t
       onMouseLeave={() => setHovered(false)}
       style={{
         background: `linear-gradient(135deg, ${theme.surface2}, ${theme.surface2}dd)`,
-        border: `1px solid ${cardBorderColor}`,
+        borderTop: `1px solid ${cardBorderColor}`,
+        borderRight: `1px solid ${cardBorderColor}`,
+        borderBottom: `1px solid ${cardBorderColor}`,
+        borderLeft: `3px solid ${dawColor}`,
         borderRadius: theme.r,
         padding: "12px 13px",
-        borderLeft: `3px solid ${dawColor}`,
         opacity: isDragging ? 0.9 : 1,
         boxShadow: cardShadow,
         position: "relative",

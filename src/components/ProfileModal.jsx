@@ -33,7 +33,7 @@ const PLANS_INFO = {
     ],
   },
   ongoing: {
-    name: "On-Going",
+    name: "Cloud",
     color: "#47c8ff",
     features: [
       "Everything in Premium",

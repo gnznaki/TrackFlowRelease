@@ -188,7 +188,7 @@ function App() {
     setPages(ps => ps.map(p => p.id === pid ? { ...p, columns: cols, layout: lyt } : p));
   }, []);
 
-  const { shareBoard, joinBoard, leaveBoard, fetchMembers } = useCollabBoard({
+  const { shareBoard, joinBoard, leaveBoard, deleteBoard, fetchMembers, members: collabMembers, myRole } = useCollabBoard({
     boardId: currentPage?.boardId,
     isShared: sharedBoards.includes(currentPage?.boardId),
     columns,
@@ -199,6 +199,8 @@ function App() {
 
   const currentBoardId = currentPage?.boardId;
   const isCurrentBoardShared = sharedBoards.includes(currentBoardId);
+  // Viewers see the board but cannot drag or edit
+  const isViewer = isCurrentBoardShared && myRole === "viewer";
 
   async function handleShareBoard() {
     const err = await shareBoard(currentPage?.name || "Board");
@@ -218,6 +220,12 @@ function App() {
 
   async function handleLeaveBoard(boardId) {
     await leaveBoard(boardId);
+    setSharedBoards(prev => prev.filter(id => id !== boardId));
+    setPages(ps => ps.map(p => p.boardId === boardId ? { ...p, boardId: crypto.randomUUID() } : p));
+  }
+
+  async function handleDeleteBoard(boardId) {
+    await deleteBoard(boardId);
     setSharedBoards(prev => prev.filter(id => id !== boardId));
     setPages(ps => ps.map(p => p.boardId === boardId ? { ...p, boardId: crypto.randomUUID() } : p));
   }
@@ -580,12 +588,18 @@ function App() {
     if (active.data.current?.type !== "card") return;
     if (String(over.id).startsWith("proj-")) return;
 
-    const targetId = String(over.id).startsWith("zone-")
-      ? over.id.replace("zone-", "") : over.id;
+    const overIdStr = String(over.id);
+    const isZone = overIdStr.startsWith("zone-");
+    // overCardId is set when hovering directly over another card (use its position)
+    // targetColId is set when hovering over an empty drop zone
+    const overCardId = isZone ? null : overIdStr;
+    const targetColId = isZone ? overIdStr.replace("zone-", "") : null;
 
     const cols = columnsRef.current;
     const src = cols.find(col => col.cards.some(c => c.id === active.id));
-    const dst = cols.find(c => c.id === targetId) || cols.find(col => col.cards.some(c => c.id === targetId));
+    const dst = targetColId
+      ? cols.find(c => c.id === targetColId)
+      : cols.find(col => col.cards.some(c => c.id === overCardId));
 
     if (!src || !dst || src.id === dst.id || lockedCols.includes(dst.id) || lockedCols.includes(src.id)) return;
 
@@ -596,7 +610,19 @@ function App() {
       if (!card) return cols;
       return cols.map(col => {
         if (col.id === currentSrc.id) return { ...col, cards: col.cards.filter(c => c.id !== active.id) };
-        if (col.id === dst.id) return { ...col, cards: [...col.cards, card] };
+        if (col.id === dst.id) {
+          if (overCardId) {
+            // Insert at the position of the card being hovered over
+            const overIdx = col.cards.findIndex(c => c.id === overCardId);
+            if (overIdx >= 0) {
+              const next = [...col.cards];
+              next.splice(overIdx, 0, card);
+              return { ...col, cards: next };
+            }
+          }
+          // Hovering over empty zone — append to end
+          return { ...col, cards: [...col.cards, card] };
+        }
         return col;
       });
     });
@@ -766,7 +792,7 @@ function App() {
           theme={theme}
         />
       )}
-      {showShareModal && user && <ShareModal boardId={currentBoardId} boardName={currentPage?.name || "Board"} mode={currentPageId} isShared={isCurrentBoardShared} user={user} onShare={handleShareBoard} onJoin={handleJoinBoard} onLeave={handleLeaveBoard} fetchMembers={fetchMembers} onClose={() => setShowShareModal(false)} theme={theme} />}
+      {showShareModal && user && <ShareModal boardId={currentBoardId} boardName={currentPage?.name || "Board"} mode={currentPageId} isShared={isCurrentBoardShared} user={user} members={collabMembers} myRole={myRole} onShare={handleShareBoard} onJoin={handleJoinBoard} onLeave={handleLeaveBoard} onDelete={handleDeleteBoard} onClose={() => setShowShareModal(false)} theme={theme} />}
       {showTagManager && <TagManager allTags={customTags} onAddTag={tag => { if (!customTags.find(t => t.label === tag.label)) setCustomTags(p => [...p, tag]); }} onDeleteTag={l => setCustomTags(p => p.filter(t => t.label !== l))} onClose={() => setShowTagManager(false)} theme={theme} />}
       {showThemeCustomizer && <ThemeCustomizer themePreset={themePreset} themeCustom={themeCustom} font={font} onApply={(preset, custom, f) => { setThemePreset(preset); setThemeCustom(custom); setFont(f); setShowThemeCustomizer(false); }} onClose={() => setShowThemeCustomizer(false)} theme={theme} />}
       {showSettings && <SettingsPanel discordWebhook={discordWebhook} colMaxHeight={colMaxHeight} onSave={(wh, mh) => { setDiscordWebhook(wh); setWebhookUrl(wh); setColMaxHeight(mh); setShowSettings(false); }} onClose={() => setShowSettings(false)} theme={theme} />}
@@ -809,6 +835,25 @@ function App() {
                     />
                   ) : (
                     <span>{page.name}</span>
+                  )}
+                  {/* Collaborator avatar cluster — only for shared boards */}
+                  {sharedBoards.includes(page.boardId) && page.id === currentPageId && collabMembers.length > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", marginLeft: 2 }}>
+                      {collabMembers.slice(0, 3).map((m, i) => {
+                        const grad = AVATAR_GRADIENTS.find(g => g.key === (m.profile?.avatar_color || "lime"));
+                        return (
+                          <div key={m.user_id}
+                            title={m.profile?.display_name || m.profile?.email || "Member"}
+                            style={{ width: 13, height: 13, borderRadius: "50%", background: `linear-gradient(135deg, ${grad?.a ?? "#c8ff47"}, ${grad?.b ?? "#3af0b0"})`, border: `1.5px solid ${theme.surface}`, marginLeft: i === 0 ? 0 : -4, zIndex: collabMembers.length - i, position: "relative", flexShrink: 0 }}
+                          />
+                        );
+                      })}
+                      {collabMembers.length > 3 && (
+                        <div style={{ width: 13, height: 13, borderRadius: "50%", background: theme.surface3, border: `1.5px solid ${theme.surface}`, marginLeft: -4, fontSize: 7, display: "flex", alignItems: "center", justifyContent: "center", color: theme.text3, fontWeight: 700 }}>
+                          +{collabMembers.length - 3}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               );
@@ -934,7 +979,7 @@ function App() {
                       background: isOngoing ? "#47c8ff22" : isPremium ? `${theme.accent}22` : theme.surface3,
                       color: isOngoing ? "#47c8ff" : isPremium ? theme.accent : theme.text3,
                       textTransform: "capitalize",
-                    }}>{tier === "ongoing" ? "On-Going" : tier === "premium" ? "Premium" : "Free"}</span>
+                    }}>{tier === "ongoing" ? "Cloud" : tier === "premium" ? "Premium" : "Free"}</span>
                     {!isPaid && (
                       <span onClick={() => { setShowUpgradeModal(true); setShowProfileDropdown(false); }} style={{ fontSize: 10, color: theme.accent, cursor: "pointer" }}>Upgrade</span>
                     )}
@@ -1036,9 +1081,9 @@ function App() {
           const type = args.active?.data?.current?.type;
           return (type === "column" || type === "card") ? closestCenter(args) : rectIntersection(args);
         }}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
+        onDragStart={isViewer ? undefined : handleDragStart}
+        onDragOver={isViewer ? undefined : handleDragOver}
+        onDragEnd={isViewer ? undefined : handleDragEnd}
       >
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           <ProjectSidebar

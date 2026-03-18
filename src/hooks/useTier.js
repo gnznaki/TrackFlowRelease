@@ -15,7 +15,8 @@ export function useTier(userId) {
       .select("tier, display_name, avatar_color, created_at")
       .eq("id", userId)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        console.log("[useTier] fetch →", { userId, data, error });
         if (data?.tier) setTier(data.tier);
         if (data?.display_name) setDisplayName(data.display_name);
         setAvatarColor(data?.avatar_color ?? "lime");
