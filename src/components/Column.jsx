@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
@@ -27,8 +27,8 @@ export function CardContent({ card, isSelected, onDelete, isDragging, allTags, t
   );
 }
 
-function SortableCard({ card, isSelected, onClick, onDelete, allTags, theme, isLocked }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+function SortableCard({ card, isSelected, onClick, onDelete, onOpenInDaw, allTags, theme, isLocked }) {
+  const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: "card" },
     disabled: isLocked,
@@ -37,11 +37,31 @@ function SortableCard({ card, isSelected, onClick, onDelete, allTags, theme, isL
       easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
     }
   });
+  const [cardMenu, setCardMenu] = useState(null);
+
+  const cardMenuItems = [
+    ...(card.path && !card.path.startsWith("~") ? [
+      { label: "Open in DAW", icon: Icons.folder, action: () => onOpenInDaw?.(card.path) },
+      { label: "Copy Path", icon: Icons.copy, action: () => navigator.clipboard?.writeText(card.path) },
+      "divider",
+    ] : []),
+    { label: "Delete Card", icon: Icons.trash, action: () => onDelete?.(card.id), danger: true },
+  ];
+
   return (
-    <div ref={setNodeRef} {...attributes} tabIndex={-1} {...(isLocked ? {} : listeners)}
+    // No {...attributes} — dnd-kit's attributes add role="button" which makes the div focusable.
+    // A focused div triggers browser scroll-to-view, causing the column scroll jump bug.
+    // Drag works fine from {...listeners} alone; attributes are only for ARIA accessibility.
+    <div
+      ref={setNodeRef}
+      {...(isLocked ? {} : listeners)}
       onClick={onClick}
-      onMouseDown={e => e.preventDefault()}
+      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCardMenu({ x: e.clientX, y: e.clientY }); }}
       style={{ transform: CSS.Transform.toString(transform), transition, marginBottom: 8, opacity: isDragging ? 0 : 1, cursor: isLocked ? "default" : (isDragging ? "grabbing" : "grab"), touchAction: "none", userSelect: "none" }}>
+      {cardMenu && createPortal(
+        <ContextMenu x={cardMenu.x} y={cardMenu.y} items={cardMenuItems} onClose={() => setCardMenu(null)} theme={theme} />,
+        document.body
+      )}
       <CardContent card={card} isSelected={isSelected} onDelete={onDelete} allTags={allTags} theme={theme} />
     </div>
   );
@@ -49,46 +69,16 @@ function SortableCard({ card, isSelected, onClick, onDelete, allTags, theme, isL
 
 function CardDropZone({ colId, children, theme, isCardDrag, colMaxHeight }) {
   const { setNodeRef, isOver } = useDroppable({ id: "zone-" + colId, disabled: !isCardDrag });
-  const divRef = useRef(null);
-  const scrollRef = useRef(0);
-  // Set in capture-phase pointerdown (before dnd-kit's bubble handler fires or stops propagation)
-  const savedScrollRef = useRef(null);
-
-  const combinedRef = useCallback((node) => {
-    divRef.current = node;
-    setNodeRef(node);
-  }, [setNodeRef]);
-
-  // Attach a capture-phase listener so we always capture scroll before dnd-kit can stopPropagation
-  useEffect(() => {
-    const div = divRef.current;
-    if (!div) return;
-    const capture = () => { savedScrollRef.current = div.scrollTop; };
-    div.addEventListener("pointerdown", capture, true);
-    return () => div.removeEventListener("pointerdown", capture, true);
-  }, []); // stable after mount
-
-  // Restore scroll position after every render — prevents focus-induced scroll-into-view
-  useLayoutEffect(() => {
-    if (!divRef.current) return;
-    const target = savedScrollRef.current !== null ? savedScrollRef.current : scrollRef.current;
-    if (divRef.current.scrollTop !== target) {
-      divRef.current.scrollTop = target;
-    }
-    savedScrollRef.current = null;
-  });
-
   return (
     <div
-      ref={combinedRef}
-      onScroll={(e) => { scrollRef.current = e.currentTarget.scrollTop; }}
+      ref={setNodeRef}
       style={{ padding: 12, height: colMaxHeight, overflowY: "auto", background: isOver && isCardDrag ? `rgba(${theme.accentRgb},0.07)` : "transparent", borderRadius: theme.r, transition: "background 0.15s" }}>
       {children}
     </div>
   );
 }
 
-export function SortableColumn({ col, selectedCard, onSelectCard, onAddCard, onDeleteCard, onRenameCol, onDeleteCol, onDuplicateCol, onChangeColor, onToggleCollapse, onToggleLock, onClearCol, onMoveRowUp, onMoveRowDown, onMoveToNewRow, allTags, sortBy, sortDir, activeFilters, searchQuery, theme, isCardDrag, isCollapsed, isLocked, colMaxHeight, canMoveUp, canMoveDown }) {
+export function SortableColumn({ col, selectedCard, onSelectCard, onAddCard, onDeleteCard, onOpenInDaw, onRenameCol, onDeleteCol, onDuplicateCol, onChangeColor, onToggleCollapse, onToggleLock, onClearCol, onMoveRowUp, onMoveRowDown, onMoveToNewRow, allTags, sortBy, sortDir, activeFilters, searchQuery, theme, isCardDrag, isCollapsed, isLocked, colMaxHeight, canMoveUp, canMoveDown }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: col.id,
     data: { type: "column" },
@@ -278,7 +268,7 @@ export function SortableColumn({ col, selectedCard, onSelectCard, onAddCard, onD
           <CardDropZone colId={col.id} theme={theme} isCardDrag={isCardDrag && !isLocked} colMaxHeight={colMaxHeight}>
             <SortableContext items={sortedCards.map(c => c.id)} strategy={verticalListSortingStrategy}>
               {sortedCards.map(card => (
-                <SortableCard key={card.id} card={card} isSelected={selectedCard?.id === card.id} onClick={() => onSelectCard(card)} onDelete={isLocked ? null : onDeleteCard} allTags={allTags} theme={theme} isLocked={isLocked} />
+                <SortableCard key={card.id} card={card} isSelected={selectedCard?.id === card.id} onClick={() => onSelectCard(card)} onDelete={isLocked ? null : onDeleteCard} onOpenInDaw={onOpenInDaw} allTags={allTags} theme={theme} isLocked={isLocked} />
               ))}
             </SortableContext>
             {sortedCards.length === 0 && activeFilters.length > 0 && <div style={{ textAlign: "center", padding: "16px 0", color: theme.text3, fontSize: 12 }}>No cards match filter</div>}

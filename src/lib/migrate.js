@@ -5,14 +5,39 @@ export function migrateState(saved) {
   if (!saved) return null;
   const themeMap = { dark: "default", slate: "tabkiller", warm: "daves", cyber: "findanote" };
   let themePreset = saved.themePreset || (themeMap[saved.themeKey] || "default");
-  const pCols = saved.producerCols || PRODUCER_COLUMNS;
-  const eCols = saved.engineerCols || ENGINEER_COLUMNS;
+
+  let pages, currentPageId;
+
+  if (saved.pages) {
+    // New format — already has pages array
+    pages = saved.pages;
+    currentPageId = saved.currentPageId || saved.pages[0]?.id;
+  } else {
+    // Old dual-board format — convert to pages
+    const pCols = saved.producerCols || PRODUCER_COLUMNS;
+    const eCols = saved.engineerCols || ENGINEER_COLUMNS;
+    pages = [
+      {
+        id: "producer",
+        name: saved.pageNames?.producer || "Producer",
+        boardId: saved.producerBoardId || crypto.randomUUID(),
+        columns: pCols,
+        layout: saved.producerLayout || [pCols.map(c => c.id)],
+      },
+      {
+        id: "engineer",
+        name: saved.pageNames?.engineer || "Engineer",
+        boardId: saved.engineerBoardId || crypto.randomUUID(),
+        columns: eCols,
+        layout: saved.engineerLayout || [eCols.map(c => c.id)],
+      },
+    ];
+    currentPageId = saved.mode === "engineer" ? "engineer" : "producer";
+  }
+
   return {
-    mode: saved.mode || "producer",
-    producerCols: pCols,
-    engineerCols: eCols,
-    producerLayout: saved.producerLayout || [pCols.map(c => c.id)],
-    engineerLayout: saved.engineerLayout || [eCols.map(c => c.id)],
+    pages,
+    currentPageId,
     projects: saved.projects || [],
     watchedFolders: saved.watchedFolders || [],
     customTags: saved.customTags || DEFAULT_TAGS,
@@ -23,10 +48,6 @@ export function migrateState(saved) {
     discordWebhook: saved.discordWebhook || "",
     collapsedCols: saved.collapsedCols || [],
     lockedCols: saved.lockedCols || [],
-    // Phase 3: stable board IDs used as Supabase keys for shared boards
-    producerBoardId: saved.producerBoardId || crypto.randomUUID(),
-    engineerBoardId: saved.engineerBoardId || crypto.randomUUID(),
     sharedBoards: saved.sharedBoards || [],
-    pageNames: saved.pageNames || { producer: "Producer", engineer: "Engineer" },
   };
 }
