@@ -3,7 +3,7 @@
 use std::process::Command;
 use std::time::UNIX_EPOCH;
 use std::path::Path;
-use tauri::{Emitter, Manager};
+use tauri::Manager;
 
 #[tauri::command]
 fn open_daw_file(path: String) -> Result<(), String> {
@@ -50,62 +50,6 @@ fn backup_app_state(app: tauri::AppHandle) -> Result<String, String> {
     Ok(backup.to_string_lossy().to_string())
 }
 
-// Check for update — returns JSON with available/version info
-// The state file is stored in AppData and is NEVER touched by updates.
-// Updates only replace the app binary/resources.
-#[tauri::command]
-async fn check_for_update(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
-    use tauri_plugin_updater::UpdaterExt;
-    match app.updater().map_err(|e| e.to_string())?.check().await {
-        Ok(Some(update)) => Ok(serde_json::json!({
-            "available": true,
-            "version": update.version,
-            "notes": update.body.unwrap_or_default(),
-            "date": update.date.map(|d| d.to_string()).unwrap_or_default()
-        })),
-        Ok(None) => Ok(serde_json::json!({ "available": false })),
-        Err(e) => Err(e.to_string()),
-    }
-}
-
-#[tauri::command]
-async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri_plugin_updater::UpdaterExt;
-
-    // Auto-backup state before touching anything
-    if let Ok(data_dir) = app.path().app_data_dir() {
-        let state_file = data_dir.join("trackflow-state.json");
-        if state_file.exists() {
-            let ts = std::time::SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-            let backup = data_dir.join(format!("trackflow-pre-update-{}.json", ts));
-            let _ = std::fs::copy(&state_file, &backup);
-        }
-    }
-
-    if let Some(update) = app.updater()
-        .map_err(|e| e.to_string())?
-        .check()
-        .await
-        .map_err(|e| e.to_string())?
-    {
-        let app_clone = app.clone();
-        update.download_and_install(
-            move |downloaded, total| {
-                let progress = total
-                    .map(|t| if t > 0 { ((downloaded as f64 / t as f64) * 100.0) as u32 } else { 0 })
-                    .unwrap_or(0);
-                let _ = app_clone.emit("update-progress", progress);
-            },
-            || {},
-        )
-        .await
-        .map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
 
 fn main() {
     tauri::Builder::default()
@@ -116,7 +60,6 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             open_daw_file, get_file_modified,
             save_app_state, load_app_state, backup_app_state,
-            check_for_update, install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri application");

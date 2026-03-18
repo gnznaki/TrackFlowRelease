@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
-import { listen } from "@tauri-apps/api/event";
+import { check } from "@tauri-apps/plugin-updater";
 import { postToDiscord } from "../lib/discord";
 import { Icon, Icons } from "./Icon";
 
@@ -14,31 +14,19 @@ export default function SettingsPanel({ discordWebhook, colMaxHeight, onSave, on
   // Version + update state
   const [appVersion, setAppVersion] = useState(null);
   const [updatePhase, setUpdatePhase] = useState("idle"); // idle|checking|up_to_date|available|downloading|installing|error
-  const [updateInfo, setUpdateInfo] = useState(null);   // { version, notes, date }
+  const [updateObj, setUpdateObj] = useState(null);      // the live update object from the JS plugin
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [updateError, setUpdateError] = useState(null);
 
   useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
 
-  // Listen to Rust progress events while downloading
-  useEffect(() => {
-    if (updatePhase !== "downloading") return;
-    let unlisten;
-    listen("update-progress", (event) => {
-      const pct = event.payload;
-      setDownloadProgress(pct);
-      if (pct >= 100) setUpdatePhase("installing");
-    }).then(fn => { unlisten = fn; });
-    return () => { if (unlisten) unlisten(); };
-  }, [updatePhase]);
-
   async function checkUpdate() {
     setUpdatePhase("checking");
     setUpdateError(null);
     try {
-      const result = await invoke("check_for_update");
-      if (result.available) {
-        setUpdateInfo(result);
+      const update = await check();
+      if (update?.available) {
+        setUpdateObj(update);
         setUpdatePhase("available");
       } else {
         setUpdatePhase("up_to_date");
@@ -50,13 +38,26 @@ export default function SettingsPanel({ discordWebhook, colMaxHeight, onSave, on
   }
 
   async function startInstall() {
+    if (!updateObj) return;
     setDownloadProgress(0);
     setUpdatePhase("downloading");
     try {
-      // install_update backs up state, then downloads+installs.
-      // On Windows (NSIS) the app closes automatically when the installer runs.
-      await invoke("install_update");
-      // Only reached if the updater didn't restart (shouldn't happen with NSIS)
+      // Backup state before installing
+      await invoke("backup_app_state").catch(() => {});
+      let contentLength = 0;
+      let downloaded = 0;
+      await updateObj.downloadAndInstall((event) => {
+        if (event.event === "Started") {
+          contentLength = event.data.contentLength ?? 0;
+        } else if (event.event === "Progress") {
+          downloaded += event.data.chunkLength;
+          const pct = contentLength > 0 ? Math.round((downloaded / contentLength) * 100) : 0;
+          setDownloadProgress(pct);
+        } else if (event.event === "Finished") {
+          setUpdatePhase("installing");
+        }
+      });
+      // On Windows (NSIS) the installer closes and relaunches the app automatically
       setUpdatePhase("installing");
     } catch (e) {
       setUpdateError(String(e));
@@ -79,7 +80,7 @@ export default function SettingsPanel({ discordWebhook, colMaxHeight, onSave, on
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.accent, animation: "pulse 1.2s infinite" }} />
             <span style={{ fontSize: 13, fontWeight: 700, color: s.text }}>
-              {updatePhase === "installing" ? "Installing update..." : `Downloading v${updateInfo?.version}...`}
+              {updatePhase === "installing" ? "Installing update..." : `Downloading v${updateObj?.version}...`}
             </span>
           </div>
           {updatePhase === "downloading" && (
@@ -104,10 +105,10 @@ export default function SettingsPanel({ discordWebhook, colMaxHeight, onSave, on
         <div style={{ padding: 16, background: s.surface2, borderRadius: s.r, border: `1px solid ${s.accent}30` }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: s.accent }}>v{updateInfo.version} available</div>
-              {updateInfo.date && (
+              <div style={{ fontSize: 13, fontWeight: 800, color: s.accent }}>v{updateObj?.version} available</div>
+              {updateObj?.date && (
                 <div style={{ fontSize: 10, color: s.text3, fontFamily: "monospace", marginTop: 2 }}>
-                  {new Date(updateInfo.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                  {new Date(updateObj.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
                 </div>
               )}
             </div>
@@ -115,9 +116,9 @@ export default function SettingsPanel({ discordWebhook, colMaxHeight, onSave, on
               <Icon d={Icons.close} size={11} />
             </button>
           </div>
-          {updateInfo.notes && (
+          {updateObj?.body && (
             <div style={{ fontSize: 11, color: s.text2, lineHeight: 1.7, marginBottom: 12, maxHeight: 80, overflowY: "auto", background: s.surface3, borderRadius: s.r - 2, padding: "8px 10px", whiteSpace: "pre-wrap" }}>
-              {updateInfo.notes}
+              {updateObj.body}
             </div>
           )}
           <div style={{ fontSize: 10, color: s.text3, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
