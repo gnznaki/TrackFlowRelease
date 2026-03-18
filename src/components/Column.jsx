@@ -231,7 +231,7 @@ export function SortableColumn({ col, selectedCard, onSelectCard, onAddCard, onD
     { label: isCollapsed ? "Expand" : "Collapse", icon: Icons.collapse, action: () => onToggleCollapse(col.id) },
     { label: isLocked ? "Unlock Column" : "Lock Column", icon: isLocked ? Icons.unlock : Icons.lock, action: () => onToggleLock(col.id) },
     "divider",
-    { label: "Change Color", icon: Icons.theme, keepOpen: true, action: () => openColorPicker() },
+    { label: "Change Color", icon: Icons.theme, action: () => openColorPicker() },
     { label: "Duplicate Column", icon: Icons.copy, action: () => onDuplicateCol(col.id) },
     "divider",
     ...(canMoveUp ? [{ label: "Move to Row Above", icon: Icons.rowUp, action: () => onMoveRowUp(col.id) }] : []),

@@ -16,7 +16,7 @@ export default function ContextMenu({ x, y, items, onClose, theme }) {
       {items.map((item, i) => item === "divider" ? (
         <div key={i} style={{ height: 1, background: theme.border, margin: "4px 0" }} />
       ) : (
-        <div key={i} onClick={() => { item.action(); if (!item.keepOpen) onClose(); }}
+        <div key={i} onClick={() => { item.action(); onClose(); }}
           style={{ padding: "8px 14px", borderRadius: theme.r - 2, cursor: "pointer", fontSize: 13, color: item.danger ? "#ff5050" : item.accent ? theme.accent : theme.text, display: "flex", alignItems: "center", gap: 10 }}
           onMouseEnter={e => e.currentTarget.style.background = theme.surface2}
           onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
