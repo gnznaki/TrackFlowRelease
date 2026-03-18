@@ -102,7 +102,6 @@ export function buildTheme(bg, cardBg, borderHex, accent, font) {
     accentText: contrastText(accent),
     accentRgb: `${ar},${ag},${ab}`,
     glow: `rgba(${ar},${ag},${ab},0.03)`,
-    glow2: "rgba(71,200,255,0.02)",
     r: 10, r2: 14, font: font || "Syne",
   };
 }

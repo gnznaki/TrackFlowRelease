@@ -32,6 +32,11 @@ import ProfileModal, { AVATAR_GRADIENTS } from "./components/ProfileModal";
 import { deleteAccount, openCustomerPortal } from "./lib/stripe";
 import "./App.css";
 
+function hexToRgbInline(hex) {
+  const h = (hex || "#888888").replace("#", "");
+  return `${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)}`;
+}
+
 // Defined outside App so React sees a stable component reference across renders.
 // If defined inside App, React remounts it (and all its children) on every render,
 // which resets the scroll position of every CardDropZone in every column.
@@ -1051,7 +1056,7 @@ function App() {
             onToggleCollapsed={() => setProjectsCollapsed(v => !v)}
           />
 
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "auto", opacity: modeTransition ? 0 : 1, transition: "opacity 0.25s", background: pageIndex === 1 ? theme.glow2 : theme.glow }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "auto", opacity: modeTransition ? 0 : 1, transition: "opacity 0.25s, background 0.4s", background: `rgba(${hexToRgbInline(modeAccent)},0.025)` }}>
             <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 16, minWidth: "fit-content" }}>
               {layout.map((rowColIds, rowIdx) => (
                 <RowDropZone key={rowIdx} id={`row-${rowIdx}`} isGridView={isGridView} isCardDrag={isCardDrag} activeColId={activeColId} theme={theme}>
