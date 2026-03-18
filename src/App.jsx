@@ -178,6 +178,7 @@ function App() {
   const layoutRef = useRef(layout);
   useEffect(() => { layoutRef.current = layout; }, [layout]);
   const dragStartColRef = useRef(null);
+  const dragStartRowRef = useRef(null);
   const lastColumnOverRef = useRef(null);
   const rafColumnReorderRef = useRef(null);
   const savedGridLayoutRef = useRef({});
@@ -531,6 +532,7 @@ function App() {
       setActiveColId(active.id);
       setIsCardDrag(false);
       lastColumnOverRef.current = null;
+      dragStartRowRef.current = layoutRef.current.findIndex(row => row.includes(String(active.id)));
     } else if (active.data.current?.type === "card") {
       const col = columnsRef.current.find(col => col.cards.some(c => c.id === active.id));
       dragStartColRef.current = col?.id || null;
@@ -667,12 +669,28 @@ function App() {
     });
   }
 
-  function handleDragEnd({ active, over }) {
+  function handleDragEnd({ active, over, delta }) {
     if (rafColumnReorderRef.current) {
       cancelAnimationFrame(rafColumnReorderRef.current);
       rafColumnReorderRef.current = null;
     }
     lastColumnOverRef.current = null;
+
+    // Column dragged downward past its row → move to new row below
+    if (!isCardDrag && active.data.current?.type === "column" && delta.y > 60) {
+      const lyt = layoutRef.current;
+      const currentRowIdx = lyt.findIndex(row => row.includes(String(active.id)));
+      const startRowIdx = dragStartRowRef.current;
+      // Only trigger if still in the same row it started in (not already moved by row-drop)
+      if (currentRowIdx !== -1 && currentRowIdx === startRowIdx && lyt.length < 4 && lyt[currentRowIdx].length > 1) {
+        dragStartRowRef.current = null;
+        handleMoveToNewRow(String(active.id));
+        setActiveCard(null); setActiveColId(null); setIsCardDrag(false);
+        dragStartColRef.current = null;
+        return;
+      }
+    }
+    dragStartRowRef.current = null;
     if (isCardDrag && over && String(over.id).startsWith("proj-")) {
       const projId = over.id.replace("proj-", "");
       setProjects(ps => ps.map(p =>
