@@ -21,8 +21,8 @@ const PLANS_INFO = {
       "Join shared boards",
     ],
   },
-  pro: {
-    name: "Pro",
+  premium: {
+    name: "Premium",
     color: "#c8ff47",
     features: [
       "Everything in Free",
@@ -32,11 +32,11 @@ const PLANS_INFO = {
       "Early access to new features",
     ],
   },
-  team: {
-    name: "Team",
+  ongoing: {
+    name: "On-Going",
     color: "#47c8ff",
     features: [
-      "Everything in Pro",
+      "Everything in Premium",
       "Up to 10 shared boards",
       "Team member management",
       "Admin controls",
@@ -68,8 +68,9 @@ export default function ProfileModal({
   displayName,
   avatarColor,
   createdAt,
-  isPro,
-  isTeam,
+  isPaid,
+  isPremium,
+  isOngoing,
   onUpdateDisplayName,
   onUpdateAvatarColor,
   onResetPassword,
@@ -100,7 +101,7 @@ export default function ProfileModal({
 
   const tierPlan = PLANS_INFO[tier] || PLANS_INFO.free;
   const tierColor = tierPlan.color ||
-    (tier === "pro" ? C.accent : tier === "team" ? "#47c8ff" : C.text3);
+    (tier === "premium" ? C.accent : tier === "ongoing" ? "#47c8ff" : C.text3);
 
   async function handleSaveName() {
     if (!nameDraft.trim()) return;
@@ -213,8 +214,8 @@ export default function ProfileModal({
                 fontWeight: 700,
                 padding: "3px 10px",
                 borderRadius: 20,
-                background: tier === "team" ? "#47c8ff22" : tier === "pro" ? `${C.accent}22` : C.surface3,
-                color: tier === "team" ? "#47c8ff" : tier === "pro" ? C.accent : C.text3,
+                background: tier === "ongoing" ? "#47c8ff22" : tier === "premium" ? `${C.accent}22` : C.surface3,
+                color: tier === "ongoing" ? "#47c8ff" : tier === "premium" ? C.accent : C.text3,
                 textTransform: "uppercase",
                 letterSpacing: "0.07em",
               }}>
@@ -396,7 +397,7 @@ export default function ProfileModal({
               </div>
 
               {/* CTA buttons */}
-              {!isPro && (
+              {!isPaid && (
                 <button
                   onClick={onUpgrade}
                   style={{
@@ -418,7 +419,7 @@ export default function ProfileModal({
                 </button>
               )}
 
-              {isPro && (
+              {isPaid && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <button
                     onClick={onManageBilling}

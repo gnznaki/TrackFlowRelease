@@ -59,7 +59,8 @@ export function useTier(userId) {
     updateDisplayName,
     updateAvatarColor,
     isFree: tier === "free",
-    isPro: tier === "pro" || tier === "team",
-    isTeam: tier === "team",
+    isPremium: tier === "premium",
+    isOngoing: tier === "ongoing",
+    isPaid: tier === "premium" || tier === "ongoing",
   };
 }

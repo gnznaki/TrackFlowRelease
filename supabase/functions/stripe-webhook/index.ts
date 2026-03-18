@@ -5,6 +5,7 @@
 //   https://<your-project>.supabase.co/functions/v1/stripe-webhook
 // Events to listen to:
 //   checkout.session.completed
+//   payment_intent.succeeded         ← for one-time Premium payment
 //   customer.subscription.updated
 //   customer.subscription.deleted
 
@@ -21,21 +22,22 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-// Maps Stripe price IDs to TrackFlow tier names.
-// Set these in your Supabase Edge Function secrets to match your Stripe prices.
+// Maps Stripe price IDs → TrackFlow tier names.
+// Set STRIPE_PREMIUM_PRICE_ID and STRIPE_ONGOING_PRICE_ID in Supabase secrets.
 function tierFromPriceId(priceId: string): string {
-  const proId = Deno.env.get("STRIPE_PRO_PRICE_ID");
-  const teamId = Deno.env.get("STRIPE_TEAM_PRICE_ID");
-  if (priceId === teamId) return "team";
-  if (priceId === proId) return "pro";
+  const premiumId = Deno.env.get("STRIPE_PREMIUM_PRICE_ID");
+  const ongoingId = Deno.env.get("STRIPE_ONGOING_PRICE_ID");
+  if (priceId === ongoingId) return "ongoing";
+  if (priceId === premiumId) return "premium";
   return "free";
 }
 
-async function setTier(customerId: string, tier: string) {
-  await supabase
-    .from("profiles")
-    .update({ tier })
-    .eq("stripe_customer_id", customerId);
+async function setTierByCustomer(customerId: string, tier: string) {
+  await supabase.from("profiles").update({ tier }).eq("stripe_customer_id", customerId);
+}
+
+async function setTierByUserId(userId: string, tier: string) {
+  await supabase.from("profiles").update({ tier }).eq("id", userId);
 }
 
 Deno.serve(async (req) => {
@@ -45,38 +47,59 @@ Deno.serve(async (req) => {
   let event: Stripe.Event;
   try {
     event = await stripe.webhooks.constructEventAsync(
-      body,
-      sig,
-      Deno.env.get("STRIPE_WEBHOOK_SECRET")!
+      body, sig, Deno.env.get("STRIPE_WEBHOOK_SECRET")!
     );
   } catch (err) {
     return new Response(`Webhook signature invalid: ${err.message}`, { status: 400 });
   }
 
   switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      if (session.mode !== "subscription") break;
-      // Retrieve the subscription to get the price ID
-      const sub = await stripe.subscriptions.retrieve(session.subscription as string);
-      const priceId = sub.items.data[0]?.price?.id ?? "";
-      await setTier(session.customer as string, tierFromPriceId(priceId));
+    // One-time Premium payment confirmed
+    case "payment_intent.succeeded": {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      const userId = pi.metadata?.supabase_user_id;
+      const priceId = pi.metadata?.price_id;
+      if (userId && priceId) {
+        await setTierByUserId(userId, tierFromPriceId(priceId));
+      } else if (pi.customer) {
+        await setTierByCustomer(pi.customer as string, tierFromPriceId(priceId ?? ""));
+      }
       break;
     }
 
+    // Subscription checkout completed (On-Going)
+    case "checkout.session.completed": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.mode === "subscription") {
+        const sub = await stripe.subscriptions.retrieve(session.subscription as string);
+        const priceId = sub.items.data[0]?.price?.id ?? "";
+        await setTierByCustomer(session.customer as string, tierFromPriceId(priceId));
+      } else if (session.mode === "payment") {
+        // one-time payment via hosted checkout fallback
+        const pi = await stripe.paymentIntents.retrieve(session.payment_intent as string);
+        const priceId = pi.metadata?.price_id ?? "";
+        const userId = pi.metadata?.supabase_user_id ?? session.metadata?.supabase_user_id ?? "";
+        if (userId) await setTierByUserId(userId, tierFromPriceId(priceId));
+        else await setTierByCustomer(session.customer as string, tierFromPriceId(priceId));
+      }
+      break;
+    }
+
+    // Subscription renewed / changed
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
       const priceId = sub.items.data[0]?.price?.id ?? "";
-      const tier = sub.status === "active" || sub.status === "trialing"
+      const tier = (sub.status === "active" || sub.status === "trialing")
         ? tierFromPriceId(priceId)
         : "free";
-      await setTier(sub.customer as string, tier);
+      await setTierByCustomer(sub.customer as string, tier);
       break;
     }
 
+    // Subscription cancelled / expired
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
-      await setTier(sub.customer as string, "free");
+      await setTierByCustomer(sub.customer as string, "free");
       break;
     }
   }

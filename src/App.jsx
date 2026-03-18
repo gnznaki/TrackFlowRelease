@@ -132,7 +132,7 @@ function App() {
   const [searchActive, setSearchActive] = useState(false);
   const [colPickerState, setColPickerState] = useState(null); // { cols, message, resolve }
 
-  const { tier, isPro, isTeam, displayName, avatarColor, createdAt, updateDisplayName, updateAvatarColor } = useTier(user?.id);
+  const { tier, isPaid, isPremium, isOngoing, displayName, avatarColor, createdAt, updateDisplayName, updateAvatarColor } = useTier(user?.id);
   const [editingDisplayName, setEditingDisplayName] = useState(false);
   const [displayNameDraft, setDisplayNameDraft] = useState("");
 
@@ -735,8 +735,9 @@ function App() {
           displayName={displayName}
           avatarColor={avatarColor}
           createdAt={createdAt}
-          isPro={isPro}
-          isTeam={isTeam}
+          isPaid={isPaid}
+          isPremium={isPremium}
+          isOngoing={isOngoing}
           onUpdateDisplayName={async (name) => { await updateDisplayName(name); }}
           onUpdateAvatarColor={updateAvatarColor}
           onResetPassword={async () => { await resetPassword(user.email); }}
@@ -811,8 +812,8 @@ function App() {
           {/* Collaborate/invite button */}
           {user && (
             <button
-              onClick={() => isPro ? setShowShareModal(true) : setShowUpgradeModal(true)}
-              title={!isPro ? "Pro feature — upgrade to share boards" : isCurrentBoardShared ? "Board is shared — manage collaboration" : "Invite / share this board"}
+              onClick={() => isPaid ? setShowShareModal(true) : setShowUpgradeModal(true)}
+              title={!isPaid ? "Premium feature — upgrade to share boards" : isCurrentBoardShared ? "Board is shared — manage collaboration" : "Invite / share this board"}
               style={{ position: "relative", width: 28, height: 28, borderRadius: theme.r, border: `1px solid ${isCurrentBoardShared ? theme.accent + "60" : theme.border}`, background: isCurrentBoardShared ? `rgba(${theme.accentRgb},0.1)` : "transparent", color: isCurrentBoardShared ? theme.accent : theme.text3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
               onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.borderColor = theme.accent + "60"; }}
               onMouseLeave={e => { e.currentTarget.style.color = isCurrentBoardShared ? theme.accent : theme.text3; e.currentTarget.style.borderColor = isCurrentBoardShared ? theme.accent + "60" : theme.border; }}>
@@ -875,12 +876,12 @@ function App() {
             onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
             {displayName ? displayName[0].toUpperCase() : (initial ?? "~")}
           </div>
-          {user && !isPro && (
-            <div onClick={() => setShowUpgradeModal(true)} title="Upgrade to Pro"
+          {user && !isPaid && (
+            <div onClick={() => setShowUpgradeModal(true)} title="Upgrade"
               style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: theme.surface3, border: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 6, cursor: "pointer", color: theme.text3 }}>★</div>
           )}
-          {user && isPro && (
-            <div title={`${tier} plan`} style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: tier === "team" ? "#47c8ff" : theme.accent, border: `1px solid ${theme.bg}` }} />
+          {user && isPaid && (
+            <div title={`${tier} plan`} style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: isOngoing ? "#47c8ff" : theme.accent, border: `1px solid ${theme.bg}` }} />
           )}
           {showProfileDropdown && user && (
             <div style={{ position: "fixed", inset: 0, zIndex: 9998 }} onClick={() => setShowProfileDropdown(false)} />
@@ -915,11 +916,11 @@ function App() {
                   <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
-                      background: tier === "team" ? "#47c8ff22" : tier === "pro" ? `${theme.accent}22` : theme.surface3,
-                      color: tier === "team" ? "#47c8ff" : tier === "pro" ? theme.accent : theme.text3,
+                      background: isOngoing ? "#47c8ff22" : isPremium ? `${theme.accent}22` : theme.surface3,
+                      color: isOngoing ? "#47c8ff" : isPremium ? theme.accent : theme.text3,
                       textTransform: "capitalize",
-                    }}>{tier}</span>
-                    {!isPro && (
+                    }}>{tier === "ongoing" ? "On-Going" : tier === "premium" ? "Premium" : "Free"}</span>
+                    {!isPaid && (
                       <span onClick={() => { setShowUpgradeModal(true); setShowProfileDropdown(false); }} style={{ fontSize: 10, color: theme.accent, cursor: "pointer" }}>Upgrade</span>
                     )}
                   </div>

@@ -18,11 +18,11 @@ const PLANS = [
     cta: null,
   },
   {
-    key: "pro",
-    name: "Pro",
-    price: "$9",
-    sub: "/ month",
-    priceKey: "pro_monthly",
+    key: "premium",
+    name: "Premium",
+    price: "$15",
+    sub: "one-time",
+    priceKey: "premium_once",
     accent: "#c8ff47",
     features: [
       "Everything in Free",
@@ -31,24 +31,24 @@ const PLANS = [
       "Unlimited shared boards",
       "Early access to new features",
     ],
-    cta: "Upgrade to Pro",
+    cta: "Get Premium",
     popular: true,
   },
   {
-    key: "team",
-    name: "Team",
-    price: "$24",
+    key: "ongoing",
+    name: "On-Going",
+    price: "$20",
     sub: "/ month",
-    priceKey: "team_monthly",
+    priceKey: "ongoing_monthly",
     accent: "#47c8ff",
     features: [
-      "Everything in Pro",
+      "Everything in Premium",
       "Up to 10 shared boards",
       "Team member management",
       "Admin controls",
       "Priority support",
     ],
-    cta: "Upgrade to Team",
+    cta: "Subscribe",
   },
 ];
 
@@ -71,7 +71,6 @@ export default function UpgradeModal({ tier, onClose, theme }) {
     const { error: err } = await startCheckout(priceKey);
     setLoading(null);
     if (err) setError(err);
-    // On success: browser opens Stripe checkout. Modal stays open with a note.
   }
 
   async function handlePortal() {
@@ -82,7 +81,7 @@ export default function UpgradeModal({ tier, onClose, theme }) {
     if (err) setError(err);
   }
 
-  const isPaying = tier === "pro" || tier === "team";
+  const isPaying = tier === "premium" || tier === "ongoing";
 
   return (
     <div
@@ -119,7 +118,6 @@ export default function UpgradeModal({ tier, onClose, theme }) {
                   </div>
                 )}
 
-                {/* Plan name + price */}
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: isCurrent ? C.accent : C.text, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
                     {plan.name}
@@ -135,7 +133,6 @@ export default function UpgradeModal({ tier, onClose, theme }) {
                   </div>
                 </div>
 
-                {/* Features */}
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
                   {plan.features.map(f => (
                     <div key={f} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -145,14 +142,13 @@ export default function UpgradeModal({ tier, onClose, theme }) {
                   ))}
                 </div>
 
-                {/* CTA */}
                 {plan.cta && !isCurrent && (
                   <button
                     onClick={() => handleUpgrade(plan.priceKey)}
                     disabled={loading === plan.priceKey}
                     style={{ width: "100%", padding: "10px 0", background: plan.popular ? C.accent : "transparent", border: `1px solid ${accentColor}`, borderRadius: C.r, color: plan.popular ? C.accentText : accentColor, fontFamily: C.font || "Syne", fontSize: 12, fontWeight: 700, cursor: loading === plan.priceKey ? "default" : "pointer", opacity: loading === plan.priceKey ? 0.6 : 1, transition: "all 0.15s" }}
-                    onMouseEnter={e => { if (!plan.popular) { e.currentTarget.style.background = accentColor + "15"; } }}
-                    onMouseLeave={e => { if (!plan.popular) { e.currentTarget.style.background = "transparent"; } }}
+                    onMouseEnter={e => { if (!plan.popular) e.currentTarget.style.background = accentColor + "15"; }}
+                    onMouseLeave={e => { if (!plan.popular) e.currentTarget.style.background = "transparent"; }}
                   >
                     {loading === plan.priceKey ? "Opening checkout…" : plan.cta}
                   </button>
@@ -168,7 +164,6 @@ export default function UpgradeModal({ tier, onClose, theme }) {
           })}
         </div>
 
-        {/* Footer */}
         <div style={{ padding: "0 24px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 11, color: C.text3 }}>
             Checkout opens in your browser. Your plan updates automatically once payment completes.
