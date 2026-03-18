@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { scanForProjects, pickAndScanFolder } from "./scanner";
 import {
   DndContext, PointerSensor, useSensor, useSensors,
-  DragOverlay, useDroppable, rectIntersection, closestCenter,
+  DragOverlay, useDroppable, rectIntersection, closestCenter, pointerWithin,
 } from "@dnd-kit/core";
 import {
   SortableContext, horizontalListSortingStrategy, arrayMove,
@@ -1118,7 +1118,12 @@ function App() {
         sensors={sensors}
         collisionDetection={(args) => {
           const type = args.active?.data?.current?.type;
-          return (type === "column" || type === "card") ? closestCenter(args) : rectIntersection(args);
+          if (type === "column") {
+            // Fire as soon as pointer enters the next column's bounds — no need to reach center
+            const pw = pointerWithin(args);
+            return pw.length > 0 ? pw : closestCenter(args);
+          }
+          return type === "card" ? closestCenter(args) : rectIntersection(args);
         }}
         onDragStart={isViewer ? undefined : handleDragStart}
         onDragOver={isViewer ? undefined : handleDragOver}
