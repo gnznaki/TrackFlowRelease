@@ -680,7 +680,9 @@ function App() {
       // Only trigger if still in the same row it started in (not already moved by row-drop)
       if (currentRowIdx !== -1 && currentRowIdx === startRowIdx && lyt.length < 4 && lyt[currentRowIdx].length > 1) {
         dragStartRowRef.current = null;
-        handleMoveToNewRow(String(active.id));
+        const colId = String(active.id);
+        // Defer until after dnd-kit finishes its cleanup to avoid ghost renders
+        requestAnimationFrame(() => handleMoveToNewRow(colId));
         setActiveCard(null); setActiveColId(null); setIsCardDrag(false);
         dragStartColRef.current = null;
         return;

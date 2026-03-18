@@ -61,7 +61,6 @@ export function useTier(userId) {
     updateAvatarColor,
     isFree: tier === "free",
     isPremium: tier === "premium",
-    isOngoing: tier === "ongoing",
-    isPaid: tier === "premium" || tier === "ongoing",
+    isPaid: tier === "premium",
   };
 }

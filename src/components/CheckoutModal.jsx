@@ -12,8 +12,7 @@ function getStripe() {
 }
 
 const PLAN_LABELS = {
-  premium_once:    { name: "Premium",  price: "$15", sub: "one-time payment",  accent: "#c8ff47" },
-  ongoing_monthly: { name: "Cloud",    price: "$20", sub: "per month",          accent: "#47c8ff" },
+  premium_once: { name: "Premium", price: "$15", sub: "one-time payment", accent: "#c8ff47" },
 };
 
 export default function CheckoutModal({ priceKey, onClose, onSuccess, theme }) {

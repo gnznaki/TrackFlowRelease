@@ -11,16 +11,13 @@ async function openExternal(url) {
 }
 
 // premium_once  = $15 one-time payment
-// ongoing_monthly = $20/month subscription
 export const PRICES = {
   premium_once: import.meta.env.VITE_STRIPE_PREMIUM_PRICE_ID,
-  ongoing_monthly: import.meta.env.VITE_STRIPE_ONGOING_PRICE_ID,
 };
 
 export const PLAN_DISPLAY = {
   free:    { name: "Free",     price: "$0",  sub: "forever",   color: null },
   premium: { name: "Premium",  price: "$15", sub: "one-time",  color: "#c8ff47" },
-  ongoing: { name: "Cloud",    price: "$20", sub: "/ month",   color: "#47c8ff" },
 };
 
 async function getUserId() {

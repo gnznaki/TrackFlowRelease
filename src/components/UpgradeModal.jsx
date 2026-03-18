@@ -35,22 +35,6 @@ const PLANS = [
     cta: "Get Premium",
     popular: true,
   },
-  {
-    key: "ongoing",
-    name: "Cloud",
-    price: "$20",
-    sub: "/ month",
-    priceKey: "ongoing_monthly",
-    accent: "#47c8ff",
-    features: [
-      "Everything in Premium",
-      "Up to 10 shared boards",
-      "Team member management",
-      "Admin controls",
-      "Priority support",
-    ],
-    cta: "Subscribe",
-  },
 ];
 
 function Check({ color }) {
@@ -79,7 +63,7 @@ export default function UpgradeModal({ tier, onClose, theme }) {
     if (err) setError(err);
   }
 
-  const isPaying = tier === "premium" || tier === "ongoing";
+  const isPaying = tier === "premium";
 
   return (
     <div
