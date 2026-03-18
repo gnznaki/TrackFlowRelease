@@ -1038,7 +1038,7 @@ function App() {
                       background: isPremium ? `${theme.accent}22` : theme.surface3,
                       color: isPremium ? theme.accent : theme.text3,
                       textTransform: "capitalize",
-                    }}>{tier === "premium" ? "Premium" : "Free"}</span>
+                    }}>{isPremium ? "Premium" : "Free"}</span>
                     {!isPaid && (
                       <span onClick={() => { setShowUpgradeModal(true); setShowProfileDropdown(false); }} style={{ fontSize: 10, color: theme.accent, cursor: "pointer" }}>Upgrade</span>
                     )}

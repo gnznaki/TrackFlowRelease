@@ -1,82 +1,295 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 
-// Uses hardcoded default-theme colours so it renders before prefs are loaded
 const C = {
-  bg: "#0a0a0b",
+  bg: "#08080a",
   surface: "#111115",
   surface2: "#18181d",
-  border: "rgba(255,255,255,0.08)",
-  border2: "rgba(255,255,255,0.14)",
+  surface3: "#1e1e25",
+  border: "rgba(255,255,255,0.06)",
+  border2: "rgba(255,255,255,0.12)",
   text: "#f0f0f0",
-  text2: "#888888",
-  text3: "#444444",
+  text2: "#909090",
+  text3: "#454545",
   accent: "#c8ff47",
-  accentDim: "rgba(200,255,71,0.12)",
+  accentRgb: "200,255,71",
   error: "#ff5050",
-  errorDim: "rgba(255,80,80,0.12)",
   success: "#3af0b0",
 };
 
-function mapError(msg) {
-  if (!msg) return msg;
-  if (msg.includes("Invalid login credentials")) return "Incorrect email or password. Try resetting your password below.";
-  if (msg.includes("Email not confirmed")) return "Please check your email and click the confirmation link before signing in.";
-  if (msg.includes("User already registered")) return "An account with this email already exists. Try signing in.";
-  return msg;
+// ── Animated canvas background ─────────────────────────────────────────────
+function ParticleCanvas() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let raf;
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const dots = Array.from({ length: 55 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.2 + 0.3,
+      vx: (Math.random() - 0.5) * 0.18,
+      vy: (Math.random() - 0.5) * 0.18,
+      o: Math.random() * 0.25 + 0.05,
+    }));
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      dots.forEach(d => {
+        d.x += d.vx; d.y += d.vy;
+        if (d.x < 0) d.x = canvas.width;
+        if (d.x > canvas.width) d.x = 0;
+        if (d.y < 0) d.y = canvas.height;
+        if (d.y > canvas.height) d.y = 0;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${C.accentRgb},${d.o})`;
+        ctx.fill();
+      });
+
+      // Draw connection lines
+      for (let i = 0; i < dots.length; i++) {
+        for (let j = i + 1; j < dots.length; j++) {
+          const dx = dots[i].x - dots[j].x;
+          const dy = dots[i].y - dots[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 110) {
+            ctx.beginPath();
+            ctx.moveTo(dots[i].x, dots[i].y);
+            ctx.lineTo(dots[j].x, dots[j].y);
+            ctx.strokeStyle = `rgba(${C.accentRgb},${0.04 * (1 - dist / 110)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+      raf = requestAnimationFrame(draw);
+    }
+    draw();
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
+  }, []);
+
+  return <canvas ref={ref} style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }} />;
 }
 
-function Field({ label, type, value, onChange, placeholder, disabled }) {
-  const [focused, setFocused] = useState(false);
+// ── Password strength ──────────────────────────────────────────────────────
+function getStrength(pw) {
+  if (!pw) return 0;
+  let s = 0;
+  if (pw.length >= 8) s++;
+  if (pw.length >= 12) s++;
+  if (/[A-Z]/.test(pw)) s++;
+  if (/[0-9]/.test(pw)) s++;
+  if (/[^A-Za-z0-9]/.test(pw)) s++;
+  return s;
+}
+const STRENGTH_LABEL = ["", "Weak", "Fair", "Good", "Strong", "Very strong"];
+const STRENGTH_COLOR = ["", "#ff5050", "#ffaa40", "#ffd700", "#3af0b0", C.accent];
+
+function StrengthBar({ password }) {
+  const s = getStrength(password);
+  if (!password) return null;
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: C.text2, marginBottom: 6, letterSpacing: "0.04em" }}>
-        {label}
+    <div style={{ marginTop: -8, marginBottom: 14 }}>
+      <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} style={{
+            flex: 1, height: 2, borderRadius: 2,
+            background: i <= s ? STRENGTH_COLOR[s] : "rgba(255,255,255,0.08)",
+            transition: "background 0.3s",
+          }} />
+        ))}
       </div>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        style={{
-          width: "100%",
-          background: C.surface2,
-          border: `1px solid ${focused ? C.accent + "80" : C.border2}`,
-          borderRadius: 10,
-          padding: "12px 16px",
-          color: C.text,
-          fontFamily: "Syne, sans-serif",
-          fontSize: 13,
-          outline: "none",
-          transition: "border-color 0.15s",
-          boxSizing: "border-box",
-          opacity: disabled ? 0.5 : 1,
-          boxShadow: focused ? `0 0 0 3px ${C.accent}20` : "none",
-        }}
-      />
+      <div style={{ fontSize: 10, color: STRENGTH_COLOR[s], textAlign: "right", letterSpacing: "0.04em" }}>
+        {STRENGTH_LABEL[s]}
+      </div>
     </div>
   );
 }
 
-export default function AuthScreen({ onOffline }) {
-  return null;
+// ── Input field ────────────────────────────────────────────────────────────
+function Field({ label, type: typeProp, value, onChange, placeholder, disabled, autoFocus, action }) {
+  const [focused, setFocused] = useState(false);
+  const [show, setShow] = useState(false);
+  const isPassword = typeProp === "password";
+  const type = isPassword && show ? "text" : typeProp;
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: C.text2, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+          {label}
+        </span>
+        {action}
+      </div>
+      <div style={{ position: "relative" }}>
+        <input
+          type={type}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+          autoFocus={autoFocus}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            width: "100%",
+            background: focused ? C.surface3 : C.surface2,
+            border: `1px solid ${focused ? C.accent + "60" : C.border2}`,
+            borderRadius: 10,
+            padding: isPassword ? "12px 44px 12px 16px" : "12px 16px",
+            color: C.text,
+            fontFamily: "Syne, sans-serif",
+            fontSize: 13,
+            outline: "none",
+            boxSizing: "border-box",
+            opacity: disabled ? 0.5 : 1,
+            boxShadow: focused ? `0 0 0 3px rgba(${C.accentRgb},0.1), inset 0 1px 0 rgba(255,255,255,0.04)` : "inset 0 1px 0 rgba(255,255,255,0.02)",
+            transition: "border-color 0.15s, box-shadow 0.15s, background 0.15s",
+          }}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => setShow(v => !v)}
+            style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.text3, cursor: "pointer", padding: 2, display: "flex", alignItems: "center", lineHeight: 1 }}
+            onMouseEnter={e => e.currentTarget.style.color = C.text2}
+            onMouseLeave={e => e.currentTarget.style.color = C.text3}
+          >
+            {show ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+              </svg>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
+// ── Submit button ──────────────────────────────────────────────────────────
+function SubmitBtn({ loading, disabled, children }) {
+  return (
+    <button
+      type="submit"
+      disabled={loading || disabled}
+      style={{
+        width: "100%",
+        padding: "13px 0",
+        background: loading || disabled ? `rgba(${C.accentRgb},0.3)` : C.accent,
+        border: "none",
+        borderRadius: 10,
+        color: loading || disabled ? "rgba(0,0,0,0.4)" : "#08080a",
+        fontFamily: "Syne, sans-serif",
+        fontSize: 13,
+        fontWeight: 800,
+        cursor: loading || disabled ? "default" : "pointer",
+        letterSpacing: "0.02em",
+        transition: "all 0.15s",
+        position: "relative",
+        overflow: "hidden",
+      }}
+      onMouseEnter={e => { if (!loading && !disabled) e.currentTarget.style.filter = "brightness(1.08)"; }}
+      onMouseLeave={e => e.currentTarget.style.filter = "none"}
+    >
+      {loading ? (
+        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <span style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(0,0,0,0.3)", borderTopColor: "rgba(0,0,0,0.7)", borderRadius: "50%", animation: "tf-spin 0.7s linear infinite" }} />
+          {children}
+        </span>
+      ) : children}
+    </button>
+  );
+}
+
+// ── Error banner ───────────────────────────────────────────────────────────
+function ErrorBanner({ error, onClose }) {
+  if (!error) return null;
+  return (
+    <div style={{ background: "rgba(255,80,80,0.08)", border: "1px solid rgba(255,80,80,0.2)", borderRadius: 8, padding: "9px 12px", marginBottom: 14, fontSize: 12, color: C.error, lineHeight: 1.5, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, animation: "tf-fadein 0.2s ease" }}>
+      <span>{error}</span>
+      <button type="button" onClick={onClose} style={{ background: "transparent", border: "none", color: C.error, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0, opacity: 0.7 }}>×</button>
+    </div>
+  );
+}
+
+function mapError(msg) {
+  if (!msg) return msg;
+  if (msg.includes("Invalid login credentials")) return "Incorrect email or password.";
+  if (msg.includes("Email not confirmed")) return "Check your inbox — you need to confirm your email first.";
+  if (msg.includes("User already registered")) return "An account with this email already exists. Try signing in.";
+  if (msg.includes("Password should be at least")) return "Password must be at least 6 characters.";
+  return msg;
+}
+
+// ── Trust indicators ───────────────────────────────────────────────────────
+function TrustRow() {
+  const items = [
+    { icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>, text: "End-to-end encrypted" },
+    { icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, text: "Local-first storage" },
+    { icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>, text: "Auto-saved always" },
+  ];
+  return (
+    <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 20, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+      {items.map(({ icon, text }) => (
+        <div key={text} style={{ display: "flex", alignItems: "center", gap: 5, color: C.text3, fontSize: 10 }}>
+          {icon}
+          <span>{text}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Main exports ───────────────────────────────────────────────────────────
+export default function AuthScreen({ onOffline }) { return null; }
+
 export function AuthScreenInner({ signIn, signUp, onOffline, resetPassword }) {
-  const [view, setView] = useState("signin"); // "signin" | "signup" | "verify" | "forgot"
+  const [view, setView] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [forgotSent, setForgotSent] = useState(false);
+
+  // Forgot password state
   const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef(null);
+
+  // Verify state
+  const [verifyEmail, setVerifyEmail] = useState("");
+  const [resendVerifyCooldown, setResendVerifyCooldown] = useState(0);
+  const verifyRef = useRef(null);
+
+  function startCooldown(setter, ref, seconds = 60) {
+    setter(seconds);
+    ref.current = setInterval(() => {
+      setter(v => {
+        if (v <= 1) { clearInterval(ref.current); return 0; }
+        return v - 1;
+      });
+    }, 1000);
+  }
+
+  useEffect(() => () => {
+    clearInterval(cooldownRef.current);
+    clearInterval(verifyRef.current);
+  }, []);
 
   function reset() { setEmail(""); setPassword(""); setUsername(""); setError(null); }
-
   function switchView(v) { reset(); setView(v); }
 
   async function handleSubmit(e) {
@@ -87,12 +300,16 @@ export function AuthScreenInner({ signIn, signUp, onOffline, resetPassword }) {
     if (view === "signup") {
       const { data, error: err } = await signUp(email, password);
       if (err) { setLoading(false); setError(mapError(err.message)); return; }
-      // Update display_name in profiles table if supabase is available
       if (data?.user && username.trim() && supabase) {
         await supabase.from("profiles").update({ display_name: username.trim() }).eq("id", data.user.id);
       }
       setLoading(false);
-      if (data?.user && !data.session) { setView("verify"); return; }
+      if (data?.user && !data.session) {
+        setVerifyEmail(email);
+        startCooldown(setResendVerifyCooldown, verifyRef);
+        setView("verify");
+        return;
+      }
     } else {
       const { error: err } = await signIn(email, password);
       setLoading(false);
@@ -108,202 +325,65 @@ export function AuthScreenInner({ signIn, signUp, onOffline, resetPassword }) {
     setLoading(false);
     if (err) { setError(mapError(err.message)); return; }
     setForgotSent(true);
+    startCooldown(setResendCooldown, cooldownRef);
   }
 
-  const cardStyle = {
-    background: C.surface,
-    border: `1px solid ${C.border2}`,
-    borderTop: `2px solid ${C.accent}`,
-    borderRadius: 20,
-    padding: 32,
-    marginBottom: 16,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 20px 60px rgba(0,0,0,0.5)",
-  };
-
-  if (view === "verify") {
-    return (
-      <div style={{ height: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "Syne, sans-serif", padding: 24 }}>
-        <div style={{ textAlign: "center", maxWidth: 360 }}>
-          <div style={{ fontSize: 26, fontWeight: 800, color: C.text, letterSpacing: "-0.5px", marginBottom: 6 }}>
-            Track<span style={{ color: C.accent }}>Flow</span>
-          </div>
-          <div style={{ fontSize: 12, color: C.text3, marginBottom: 32 }}>The music production workspace</div>
-          <div style={{ ...cardStyle }}>
-            <div style={{ fontSize: 36, marginBottom: 16 }}>✉</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 8 }}>Check your inbox</div>
-            <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.7, marginBottom: 24 }}>
-              We sent a confirmation link to <span style={{ color: C.accent }}>{email}</span>.<br />
-              Click it to activate your account and sign in.
-            </div>
-            <button onClick={() => switchView("signin")} style={{ padding: "10px 28px", background: C.surface2, border: `1px solid ${C.border2}`, borderRadius: 10, color: C.text2, fontFamily: "Syne, sans-serif", fontSize: 13, cursor: "pointer" }}>
-              Back to sign in
-            </button>
-          </div>
-        </div>
-        <button onClick={onOffline}
-          style={{ background: "transparent", border: "none", color: C.text3, fontFamily: "Syne, sans-serif", fontSize: 12, cursor: "pointer", padding: "6px 12px", borderRadius: 8, transition: "color 0.15s" }}
-          onMouseEnter={e => e.currentTarget.style.color = C.text2}
-          onMouseLeave={e => e.currentTarget.style.color = C.text3}>
-          Continue without account →
-        </button>
-      </div>
-    );
+  async function handleResendReset() {
+    if (resendCooldown > 0) return;
+    setLoading(true);
+    const { error: err } = await resetPassword(forgotEmail);
+    setLoading(false);
+    if (!err) startCooldown(setResendCooldown, cooldownRef);
   }
 
-  if (view === "forgot") {
-    return (
-      <div style={{ height: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "Syne, sans-serif", padding: 24 }}>
-        <div style={{ width: "100%", maxWidth: 400 }}>
-          <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <div style={{ fontSize: 26, fontWeight: 800, color: C.text, letterSpacing: "-0.5px", marginBottom: 6 }}>
-              Track<span style={{ color: C.accent }}>Flow</span>
-            </div>
-            <div style={{ fontSize: 12, color: C.text3 }}>The music production workspace</div>
-          </div>
-
-          <div style={cardStyle}>
-            <button onClick={() => switchView("signin")} style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", color: C.text3, fontFamily: "Syne, sans-serif", fontSize: 12, cursor: "pointer", padding: 0, marginBottom: 20 }}
-              onMouseEnter={e => e.currentTarget.style.color = C.text2}
-              onMouseLeave={e => e.currentTarget.style.color = C.text3}>
-              ← Back to sign in
-            </button>
-            <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginBottom: 6 }}>Reset your password</div>
-            <div style={{ fontSize: 12, color: C.text2, marginBottom: 20, lineHeight: 1.6 }}>
-              Enter your email and we'll send you a reset link.
-            </div>
-
-            {forgotSent ? (
-              <div style={{ textAlign: "center", padding: "24px 0" }}>
-                <div style={{ fontSize: 32, marginBottom: 12 }}>✓</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: C.success, marginBottom: 8 }}>Check your inbox</div>
-                <div style={{ fontSize: 12, color: C.text2, lineHeight: 1.6 }}>
-                  We sent a reset link to <span style={{ color: C.accent }}>{forgotEmail}</span>.
-                </div>
-              </div>
-            ) : (
-              <form onSubmit={handleForgot}>
-                <Field label="Email" type="email" value={forgotEmail} onChange={setForgotEmail} placeholder="you@example.com" disabled={loading} />
-                {error && (
-                  <div style={{ background: C.errorDim, border: `1px solid ${C.error}30`, borderRadius: 8, padding: "8px 12px", marginBottom: 14, fontSize: 12, color: C.error, lineHeight: 1.5, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                    <span>{error}</span>
-                    <button onClick={() => setError(null)} style={{ background: "transparent", border: "none", color: C.error, cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
-                  </div>
-                )}
-                <button type="submit" disabled={loading || !forgotEmail}
-                  style={{ width: "100%", padding: "12px 0", background: loading ? C.accentDim : C.accent, border: "none", borderRadius: 10, color: "#0a0a0b", fontFamily: "Syne, sans-serif", fontSize: 13, fontWeight: 800, cursor: loading || !forgotEmail ? "default" : "pointer", transition: "filter 0.15s", opacity: !forgotEmail ? 0.5 : 1 }}
-                  onMouseEnter={e => { if (!loading && forgotEmail) e.currentTarget.style.filter = "brightness(1.1)"; }}
-                  onMouseLeave={e => e.currentTarget.style.filter = "brightness(1)"}>
-                  {loading ? "Sending…" : "Send Reset Link"}
-                </button>
-              </form>
-            )}
-          </div>
-
-          <div style={{ textAlign: "center" }}>
-            <button onClick={onOffline}
-              style={{ background: "transparent", border: "none", color: C.text3, fontFamily: "Syne, sans-serif", fontSize: 12, cursor: "pointer", padding: "6px 12px", borderRadius: 8, transition: "color 0.15s" }}
-              onMouseEnter={e => e.currentTarget.style.color = C.text2}
-              onMouseLeave={e => e.currentTarget.style.color = C.text3}>
-              Continue without account →
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  async function handleResendVerify() {
+    if (resendVerifyCooldown > 0 || !supabase) return;
+    setLoading(true);
+    await supabase.auth.resend({ type: "signup", email: verifyEmail });
+    setLoading(false);
+    startCooldown(setResendVerifyCooldown, verifyRef);
   }
 
-  return (
-    <div style={{ height: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "Syne, sans-serif", padding: 24 }}>
-      <div style={{ width: "100%", maxWidth: 400 }}>
+  // ── Shared layout wrapper ────────────────────────────────────────────────
+  const Wrap = ({ children, wide }) => (
+    <div style={{ height: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "Syne, sans-serif", padding: 24, position: "relative", overflow: "hidden" }}>
+      <style>{`
+        @keyframes tf-spin { to { transform: rotate(360deg); } }
+        @keyframes tf-fadein { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+        @keyframes tf-slidein { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+        @keyframes tf-glow { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+        @keyframes tf-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(${C.accentRgb},0.3); } 50% { box-shadow: 0 0 0 8px rgba(${C.accentRgb},0); } }
+      `}</style>
 
+      {/* Radial gradient spot behind card */}
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 600, height: 600, background: `radial-gradient(circle, rgba(${C.accentRgb},0.04) 0%, transparent 70%)`, pointerEvents: "none", zIndex: 0 }} />
+
+      <ParticleCanvas />
+
+      <div style={{ width: "100%", maxWidth: wide ? 440 : 400, position: "relative", zIndex: 1, animation: "tf-slidein 0.35s cubic-bezier(0.25,1,0.5,1)" }}>
         {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 26, fontWeight: 800, color: C.text, letterSpacing: "-0.5px", marginBottom: 6 }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          {/* Shield icon */}
+          <div style={{ width: 52, height: 52, borderRadius: 16, background: `rgba(${C.accentRgb},0.1)`, border: `1px solid rgba(${C.accentRgb},0.25)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", animation: "tf-pulse 3s ease infinite" }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M9 12l2 2 4-4" strokeWidth="2"/>
+            </svg>
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: C.text, letterSpacing: "-0.5px" }}>
             Track<span style={{ color: C.accent }}>Flow</span>
           </div>
-          <div style={{ fontSize: 12, color: C.text3 }}>The music production workspace</div>
-        </div>
-
-        {/* Card */}
-        <div style={cardStyle}>
-
-          {/* Pill tab switcher */}
-          <div style={{ display: "flex", background: C.surface2, borderRadius: 50, padding: 4, marginBottom: 24, gap: 4 }}>
-            {[["signin", "Sign In"], ["signup", "Create Account"]].map(([key, label]) => (
-              <button key={key} onClick={() => switchView(key)}
-                style={{
-                  flex: 1,
-                  padding: "8px 0",
-                  borderRadius: 50,
-                  border: "none",
-                  background: view === key ? C.accent : "transparent",
-                  color: view === key ? "#0a0a0b" : C.text2,
-                  fontFamily: "Syne, sans-serif",
-                  fontSize: 12,
-                  fontWeight: view === key ? 800 : 500,
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                }}>
-                {label}
-              </button>
-            ))}
+          <div style={{ fontSize: 11, color: C.text3, marginTop: 4, letterSpacing: "0.04em" }}>
+            MUSIC PRODUCTION WORKSPACE
           </div>
-
-          <form onSubmit={handleSubmit}>
-            {view === "signup" && (
-              <Field label="Username" type="text" value={username} onChange={setUsername} placeholder="your-producer-name" disabled={loading} />
-            )}
-            <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" disabled={loading} />
-            <Field label="Password" type="password" value={password} onChange={setPassword} placeholder={view === "signup" ? "8+ characters" : "••••••••"} disabled={loading} />
-
-            {error && (
-              <div style={{ background: C.errorDim, border: `1px solid ${C.error}30`, borderRadius: 8, padding: "8px 12px", marginBottom: 14, fontSize: 12, color: C.error, lineHeight: 1.5, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                <span>{error}</span>
-                <button type="button" onClick={() => setError(null)} style={{ background: "transparent", border: "none", color: C.error, cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
-              </div>
-            )}
-
-            <button type="submit" disabled={loading || !email || !password}
-              style={{ width: "100%", padding: "12px 0", background: loading ? C.accentDim : C.accent, border: "none", borderRadius: 10, color: "#0a0a0b", fontFamily: "Syne, sans-serif", fontSize: 13, fontWeight: 800, cursor: loading ? "default" : "pointer", transition: "filter 0.15s", opacity: (!email || !password) ? 0.5 : 1 }}
-              onMouseEnter={e => { if (!loading && email && password) e.currentTarget.style.filter = "brightness(1.1)"; }}
-              onMouseLeave={e => e.currentTarget.style.filter = "brightness(1)"}>
-              {loading ? "Please wait…" : view === "signin" ? "Sign In" : "Create Account"}
-            </button>
-          </form>
-
-          {/* Forgot password — signin only */}
-          {view === "signin" && (
-            <div style={{ marginTop: 14, textAlign: "center" }}>
-              <button type="button" onClick={() => { setForgotEmail(email); setForgotSent(false); setError(null); setView("forgot"); }}
-                style={{ background: "transparent", border: "none", color: C.text3, fontFamily: "Syne, sans-serif", fontSize: 11, cursor: "pointer", padding: "4px 8px", borderRadius: 6, transition: "color 0.15s" }}
-                onMouseEnter={e => e.currentTarget.style.color = C.text2}
-                onMouseLeave={e => e.currentTarget.style.color = C.text3}>
-                Forgot password?
-              </button>
-            </div>
-          )}
-
-          {/* Benefits — shown on signup only */}
-          {view === "signup" && (
-            <div style={{ marginTop: 20, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
-              {[
-                { icon: "⟳", text: "Sync boards across devices" },
-                { icon: "◈", text: "Save themes to your profile" },
-                { icon: "⇌", text: "Collaborate on boards" },
-              ].map(b => (
-                <div key={b.text} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, color: C.accent, width: 16, textAlign: "center", flexShrink: 0 }}>{b.icon}</span>
-                  <span style={{ fontSize: 12, color: C.text2 }}>{b.text}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
+
+        {children}
 
         {/* Continue offline */}
-        <div style={{ textAlign: "center" }}>
+        <div style={{ textAlign: "center", marginTop: 16 }}>
           <button onClick={onOffline}
-            style={{ background: "transparent", border: "none", color: C.text3, fontFamily: "Syne, sans-serif", fontSize: 12, cursor: "pointer", padding: "6px 12px", borderRadius: 8, transition: "color 0.15s" }}
+            style={{ background: "transparent", border: "none", color: C.text3, fontFamily: "Syne, sans-serif", fontSize: 11, cursor: "pointer", padding: "6px 12px", borderRadius: 8, transition: "color 0.15s", letterSpacing: "0.02em" }}
             onMouseEnter={e => e.currentTarget.style.color = C.text2}
             onMouseLeave={e => e.currentTarget.style.color = C.text3}>
             Continue without account →
@@ -311,5 +391,176 @@ export function AuthScreenInner({ signIn, signUp, onOffline, resetPassword }) {
         </div>
       </div>
     </div>
+  );
+
+  const cardStyle = {
+    background: "rgba(17,17,21,0.85)",
+    backdropFilter: "blur(20px)",
+    WebkitBackdropFilter: "blur(20px)",
+    border: `1px solid ${C.border2}`,
+    borderTop: `1px solid rgba(${C.accentRgb},0.3)`,
+    borderRadius: 18,
+    padding: "28px 28px 24px",
+    marginBottom: 0,
+    boxShadow: `0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(${C.accentRgb},0.04), inset 0 1px 0 rgba(255,255,255,0.04)`,
+  };
+
+  // ── Verify email view ────────────────────────────────────────────────────
+  if (view === "verify") {
+    return (
+      <Wrap>
+        <div style={cardStyle}>
+          <div style={{ textAlign: "center", padding: "8px 0 20px" }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: `rgba(${C.accentRgb},0.1)`, border: `1px solid rgba(${C.accentRgb},0.3)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: C.text, marginBottom: 8 }}>Verify your email</div>
+            <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.7, marginBottom: 20 }}>
+              We sent a confirmation link to<br />
+              <span style={{ color: C.accent, fontWeight: 700 }}>{verifyEmail}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                onClick={handleResendVerify}
+                disabled={resendVerifyCooldown > 0 || loading}
+                style={{ padding: "10px 0", background: resendVerifyCooldown > 0 ? "transparent" : `rgba(${C.accentRgb},0.12)`, border: `1px solid ${resendVerifyCooldown > 0 ? C.border2 : `rgba(${C.accentRgb},0.3)`}`, borderRadius: 10, color: resendVerifyCooldown > 0 ? C.text3 : C.accent, fontFamily: "Syne, sans-serif", fontSize: 12, fontWeight: 700, cursor: resendVerifyCooldown > 0 ? "default" : "pointer", transition: "all 0.2s" }}>
+                {resendVerifyCooldown > 0 ? `Resend in ${resendVerifyCooldown}s` : "Resend confirmation email"}
+              </button>
+              <button onClick={() => switchView("signin")}
+                style={{ padding: "10px 0", background: "transparent", border: `1px solid ${C.border2}`, borderRadius: 10, color: C.text2, fontFamily: "Syne, sans-serif", fontSize: 12, cursor: "pointer" }}>
+                Back to sign in
+              </button>
+            </div>
+          </div>
+          <TrustRow />
+        </div>
+      </Wrap>
+    );
+  }
+
+  // ── Forgot password view ─────────────────────────────────────────────────
+  if (view === "forgot") {
+    return (
+      <Wrap>
+        <div style={cardStyle}>
+          <button onClick={() => { switchView("signin"); setForgotSent(false); setResendCooldown(0); clearInterval(cooldownRef.current); }}
+            style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", color: C.text3, fontFamily: "Syne, sans-serif", fontSize: 12, cursor: "pointer", padding: 0, marginBottom: 20, transition: "color 0.15s" }}
+            onMouseEnter={e => e.currentTarget.style.color = C.text2}
+            onMouseLeave={e => e.currentTarget.style.color = C.text3}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Back to sign in
+          </button>
+
+          {forgotSent ? (
+            <div style={{ textAlign: "center", padding: "8px 0" }}>
+              <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(58,240,176,0.1)", border: "1px solid rgba(58,240,176,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.success} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginBottom: 6 }}>Check your inbox</div>
+              <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.7, marginBottom: 20 }}>
+                Reset link sent to<br />
+                <span style={{ color: C.accent, fontWeight: 700 }}>{forgotEmail}</span>
+              </div>
+              <button
+                onClick={handleResendReset}
+                disabled={resendCooldown > 0 || loading}
+                style={{ width: "100%", padding: "11px 0", background: resendCooldown > 0 ? "transparent" : `rgba(${C.accentRgb},0.1)`, border: `1px solid ${resendCooldown > 0 ? C.border2 : `rgba(${C.accentRgb},0.25)`}`, borderRadius: 10, color: resendCooldown > 0 ? C.text3 : C.accent, fontFamily: "Syne, sans-serif", fontSize: 12, fontWeight: 700, cursor: resendCooldown > 0 ? "default" : "pointer", transition: "all 0.2s" }}>
+                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : loading ? "Sending…" : "Resend reset link"}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginBottom: 6 }}>Reset your password</div>
+              <div style={{ fontSize: 12, color: C.text2, marginBottom: 20, lineHeight: 1.6 }}>
+                Enter your email and we'll send a secure reset link.
+              </div>
+              <form onSubmit={handleForgot}>
+                <Field label="Email" type="email" value={forgotEmail} onChange={setForgotEmail} placeholder="you@example.com" disabled={loading} autoFocus />
+                <ErrorBanner error={error} onClose={() => setError(null)} />
+                <SubmitBtn loading={loading} disabled={!forgotEmail}>
+                  Send Reset Link
+                </SubmitBtn>
+              </form>
+            </>
+          )}
+          <TrustRow />
+        </div>
+      </Wrap>
+    );
+  }
+
+  // ── Sign in / Sign up view ───────────────────────────────────────────────
+  return (
+    <Wrap>
+      <div style={cardStyle}>
+        {/* Tab switcher */}
+        <div style={{ display: "flex", background: C.surface2, borderRadius: 12, padding: 3, marginBottom: 24, gap: 3, border: `1px solid ${C.border}` }}>
+          {[["signin", "Sign In"], ["signup", "Create Account"]].map(([key, label]) => (
+            <button key={key} onClick={() => switchView(key)}
+              style={{
+                flex: 1,
+                padding: "9px 0",
+                borderRadius: 9,
+                border: "none",
+                background: view === key ? C.surface : "transparent",
+                color: view === key ? C.text : C.text3,
+                fontFamily: "Syne, sans-serif",
+                fontSize: 12,
+                fontWeight: view === key ? 700 : 500,
+                cursor: "pointer",
+                transition: "all 0.2s",
+                boxShadow: view === key ? "0 1px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)" : "none",
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {view === "signup" && (
+            <Field label="Username" type="text" value={username} onChange={setUsername} placeholder="your-producer-name" disabled={loading} autoFocus />
+          )}
+          <Field
+            label="Email"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            placeholder="you@example.com"
+            disabled={loading}
+            autoFocus={view === "signin"}
+          />
+          <Field
+            label="Password"
+            type="password"
+            value={password}
+            onChange={setPassword}
+            placeholder={view === "signup" ? "8+ characters" : "••••••••"}
+            disabled={loading}
+            action={view === "signin" && (
+              <button type="button"
+                onClick={() => { setForgotEmail(email); setForgotSent(false); setError(null); setView("forgot"); }}
+                style={{ background: "transparent", border: "none", color: C.text3, fontFamily: "Syne, sans-serif", fontSize: 10, cursor: "pointer", padding: 0, letterSpacing: "0.04em", textTransform: "uppercase", transition: "color 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.color = C.accent}
+                onMouseLeave={e => e.currentTarget.style.color = C.text3}>
+                Forgot?
+              </button>
+            )}
+          />
+          {view === "signup" && <StrengthBar password={password} />}
+
+          <ErrorBanner error={error} onClose={() => setError(null)} />
+
+          <SubmitBtn loading={loading} disabled={!email || !password}>
+            {loading ? "Please wait…" : view === "signin" ? "Sign In" : "Create Account"}
+          </SubmitBtn>
+        </form>
+
+        <TrustRow />
+      </div>
+    </Wrap>
   );
 }
