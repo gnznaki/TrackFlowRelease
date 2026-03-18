@@ -42,6 +42,17 @@ export async function startCheckout(priceKey) {
 }
 
 /**
+ * Deletes the currently signed-in user's account via an Edge Function
+ * that uses the service-role key to call auth.admin.deleteUser().
+ */
+export async function deleteAccount() {
+  const userId = await getUserId();
+  if (!userId) return { error: "Not signed in" };
+  const { error } = await supabase.functions.invoke("delete-account", { body: {} });
+  return { error: error?.message ?? null };
+}
+
+/**
  * Opens the Stripe Customer Portal in the system browser so the user
  * can update payment info, upgrade, downgrade, or cancel.
  */

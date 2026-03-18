@@ -28,6 +28,8 @@ import { useCollabBoard } from "./hooks/useCollabBoard";
 import { useTier } from "./hooks/useTier";
 import ShareModal from "./components/ShareModal";
 import UpgradeModal from "./components/UpgradeModal";
+import ProfileModal, { AVATAR_GRADIENTS } from "./components/ProfileModal";
+import { deleteAccount, openCustomerPortal } from "./lib/stripe";
 import "./App.css";
 
 // Defined outside App so React sees a stable component reference across renders.
@@ -126,10 +128,11 @@ function App() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
   const [colPickerState, setColPickerState] = useState(null); // { cols, message, resolve }
 
-  const { tier, isPro, displayName, updateDisplayName } = useTier(user?.id);
+  const { tier, isPro, isTeam, displayName, avatarColor, createdAt, updateDisplayName, updateAvatarColor } = useTier(user?.id);
   const [editingDisplayName, setEditingDisplayName] = useState(false);
   const [displayNameDraft, setDisplayNameDraft] = useState("");
 
@@ -725,6 +728,29 @@ function App() {
         />
       )}
       {showUpgradeModal && <UpgradeModal tier={tier} onClose={() => setShowUpgradeModal(false)} theme={theme} />}
+      {showProfileModal && user && (
+        <ProfileModal
+          user={user}
+          tier={tier}
+          displayName={displayName}
+          avatarColor={avatarColor}
+          createdAt={createdAt}
+          isPro={isPro}
+          isTeam={isTeam}
+          onUpdateDisplayName={async (name) => { await updateDisplayName(name); }}
+          onUpdateAvatarColor={updateAvatarColor}
+          onResetPassword={async () => { await resetPassword(user.email); }}
+          onDeleteAccount={async () => {
+            const { error } = await deleteAccount();
+            if (!error) { await signOut(); }
+            else { alert("Delete failed: " + error); }
+          }}
+          onUpgrade={() => { setShowUpgradeModal(true); setShowProfileModal(false); }}
+          onManageBilling={async () => { await openCustomerPortal(); }}
+          onClose={() => setShowProfileModal(false)}
+          theme={theme}
+        />
+      )}
       {showShareModal && user && <ShareModal boardId={currentBoardId} boardName={currentPage?.name || "Board"} mode={currentPageId} isShared={isCurrentBoardShared} user={user} onShare={handleShareBoard} onJoin={handleJoinBoard} onLeave={handleLeaveBoard} fetchMembers={fetchMembers} onClose={() => setShowShareModal(false)} theme={theme} />}
       {showTagManager && <TagManager allTags={customTags} onAddTag={tag => { if (!customTags.find(t => t.label === tag.label)) setCustomTags(p => [...p, tag]); }} onDeleteTag={l => setCustomTags(p => p.filter(t => t.label !== l))} onClose={() => setShowTagManager(false)} theme={theme} />}
       {showThemeCustomizer && <ThemeCustomizer themePreset={themePreset} themeCustom={themeCustom} font={font} onApply={(preset, custom, f) => { setThemePreset(preset); setThemeCustom(custom); setFont(f); setShowThemeCustomizer(false); }} onClose={() => setShowThemeCustomizer(false)} theme={theme} />}
@@ -844,7 +870,7 @@ function App() {
           <div
             title={user ? `${displayName || user.email} · ${tier}` : "Click to sign in or create account"}
             onClick={() => user ? setShowProfileDropdown(v => !v) : setShowAuthModal(true)}
-            style={{ width: 28, height: 28, borderRadius: "50%", background: user ? `linear-gradient(135deg, ${theme.accent}, #47c8ff)` : theme.surface3, border: user ? "none" : `1px solid ${theme.border2}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: user ? theme.accentText : theme.text3, cursor: "pointer" }}
+            style={{ width: 28, height: 28, borderRadius: "50%", background: user ? `linear-gradient(135deg, ${(AVATAR_GRADIENTS.find(g => g.key === avatarColor) || { a: theme.accent, b: "#47c8ff" }).a}, ${(AVATAR_GRADIENTS.find(g => g.key === avatarColor) || { a: theme.accent, b: "#47c8ff" }).b})` : theme.surface3, border: user ? "none" : `1px solid ${theme.border2}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: user ? theme.accentText : theme.text3, cursor: "pointer" }}
             onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
             onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
             {displayName ? displayName[0].toUpperCase() : (initial ?? "~")}
@@ -901,7 +927,7 @@ function App() {
               </div>
               {[
                 { label: "Customize Theme", icon: Icons.theme, action: () => { setShowThemeCustomizer(true); setShowProfileDropdown(false); } },
-                { label: "Profile Settings", icon: Icons.settings, action: () => { setShowProfileDropdown(false); } },
+                { label: "Profile Settings", icon: Icons.settings, action: () => { setShowProfileModal(true); setShowProfileDropdown(false); } },
                 { label: "Keyboard Shortcuts", icon: Icons.tag, action: () => { setShowProfileDropdown(false); } },
               ].map((item, i) => (
                 <div key={i} onClick={item.action}

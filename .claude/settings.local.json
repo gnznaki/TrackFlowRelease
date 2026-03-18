@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(cargo check:)",
+      "Bash(cargo check:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(npx tauri:*)",
+      "Bash(node:*)",
+      "Bash(cargo tauri:*)",
+      "Bash(npx @tauri-apps/cli signer generate --ci)",
+      "Bash(TAURI_SIGNING_PRIVATE_KEY_PATH=\"src-tauri/signing.key\" npm run tauri build 2>&1)",
+      "Bash(set -a)",
+      "Bash(source .env.local)",
+      "Bash(set +a)"
+    ]
+  }
+}
