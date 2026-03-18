@@ -10,6 +10,13 @@ export function useTier(userId) {
   useEffect(() => {
     if (!userId || !supabase) return;
 
+    function applyProfile(row) {
+      if (row?.tier) setTier(row.tier);
+      if (row?.display_name) setDisplayName(row.display_name);
+      setAvatarColor(row?.avatar_color ?? "lime");
+      setCreatedAt(row?.created_at ?? null);
+    }
+
     supabase
       .from("profiles")
       .select("tier, display_name, avatar_color, created_at")
@@ -17,22 +24,15 @@ export function useTier(userId) {
       .single()
       .then(({ data, error }) => {
         console.log("[useTier] fetch →", { userId, data, error });
-        if (data?.tier) setTier(data.tier);
-        if (data?.display_name) setDisplayName(data.display_name);
-        setAvatarColor(data?.avatar_color ?? "lime");
-        setCreatedAt(data?.created_at ?? null);
+        if (data) applyProfile(data);
       });
 
     const channel = supabase
       .channel(`tier-${userId}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${userId}` },
-        (payload) => {
-          if (payload.new?.tier) setTier(payload.new.tier);
-          if (payload.new?.display_name !== undefined) setDisplayName(payload.new.display_name ?? "");
-          if (payload.new?.avatar_color !== undefined) setAvatarColor(payload.new.avatar_color ?? "lime");
-        }
+        { event: "*", schema: "public", table: "profiles", filter: `id=eq.${userId}` },
+        (payload) => { applyProfile(payload.new); }
       )
       .subscribe();
 

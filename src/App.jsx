@@ -138,7 +138,7 @@ function App() {
   const [searchActive, setSearchActive] = useState(false);
   const [colPickerState, setColPickerState] = useState(null); // { cols, message, resolve }
 
-  const { tier, isPaid, isPremium, isOngoing, displayName, avatarColor, createdAt, updateDisplayName, updateAvatarColor } = useTier(user?.id);
+  const { tier, isPaid, isPremium, displayName, avatarColor, createdAt, updateDisplayName, updateAvatarColor } = useTier(user?.id);
   const [editingDisplayName, setEditingDisplayName] = useState(false);
   const [displayNameDraft, setDisplayNameDraft] = useState("");
 
@@ -996,7 +996,7 @@ function App() {
               style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: theme.surface3, border: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 6, cursor: "pointer", color: theme.text3 }}>★</div>
           )}
           {user && isPaid && (
-            <div title={`${tier} plan`} style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: isOngoing ? "#47c8ff" : theme.accent, border: `1px solid ${theme.bg}` }} />
+            <div title={`${tier} plan`} style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: theme.accent, border: `1px solid ${theme.bg}` }} />
           )}
           {showProfileDropdown && user && (
             <div style={{ position: "fixed", inset: 0, zIndex: 9998 }} onClick={() => setShowProfileDropdown(false)} />
@@ -1031,10 +1031,10 @@ function App() {
                   <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
-                      background: isOngoing ? "#47c8ff22" : isPremium ? `${theme.accent}22` : theme.surface3,
-                      color: isOngoing ? "#47c8ff" : isPremium ? theme.accent : theme.text3,
+                      background: isPremium ? `${theme.accent}22` : theme.surface3,
+                      color: isPremium ? theme.accent : theme.text3,
                       textTransform: "capitalize",
-                    }}>{tier === "ongoing" ? "Cloud" : tier === "premium" ? "Premium" : "Free"}</span>
+                    }}>{tier === "premium" ? "Premium" : "Free"}</span>
                     {!isPaid && (
                       <span onClick={() => { setShowUpgradeModal(true); setShowProfileDropdown(false); }} style={{ fontSize: 10, color: theme.accent, cursor: "pointer" }}>Upgrade</span>
                     )}
@@ -1186,6 +1186,7 @@ function App() {
                               activeFilters={activeTagFilters} searchQuery={searchQuery} theme={theme}
                               isCardDrag={isCardDrag}
                               isColDrag={!isCardDrag && activeColId !== null}
+                              activeDragCardId={activeCard?.id}
                               isCollapsed={collapsedCols.includes(col.id)} isLocked={lockedCols.includes(col.id)}
                               colMaxHeight={colMaxHeight}
                               canMoveUp={isGridView && rowIdx > 0} canMoveDown={isGridView && (layout.length < 4 || rowIdx < layout.length - 1)} />

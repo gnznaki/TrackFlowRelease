@@ -89,7 +89,7 @@ export function CardContent({ card, isSelected, onDelete, isDragging, allTags, t
   );
 }
 
-function SortableCard({ card, isSelected, onClick, onDelete, onOpenInDaw, allTags, theme, isLocked }) {
+function SortableCard({ card, isSelected, onClick, onDelete, onOpenInDaw, allTags, theme, isLocked, activeDragCardId }) {
   const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: "card" },
@@ -116,7 +116,7 @@ function SortableCard({ card, isSelected, onClick, onDelete, onOpenInDaw, allTag
       {...(isLocked ? {} : listeners)}
       onClick={onClick}
       onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCardMenu({ x: e.clientX, y: e.clientY }); }}
-      style={{ transform: CSS.Transform.toString(transform), transition, marginBottom: 8, opacity: isDragging ? 0 : 1, cursor: isLocked ? "default" : (isDragging ? "grabbing" : "grab"), touchAction: "none", userSelect: "none" }}>
+      style={{ transform: CSS.Transform.toString(transform), transition, marginBottom: 8, opacity: (isDragging || card.id === activeDragCardId) ? 0 : 1, cursor: isLocked ? "default" : (isDragging ? "grabbing" : "grab"), touchAction: "none", userSelect: "none" }}>
       {cardMenu && createPortal(
         <ContextMenu x={cardMenu.x} y={cardMenu.y} items={cardMenuItems} onClose={() => setCardMenu(null)} theme={theme} />,
         document.body
@@ -155,7 +155,7 @@ function CardDropZone({ colId, children, theme, isCardDrag, isColDrag, colMaxHei
   );
 }
 
-export function SortableColumn({ col, selectedCard, onSelectCard, onAddCard, onDeleteCard, onOpenInDaw, onRenameCol, onDeleteCol, onDuplicateCol, onChangeColor, onToggleCollapse, onToggleLock, onClearCol, onMoveRowUp, onMoveRowDown, onMoveToNewRow, allTags, sortBy, sortDir, activeFilters, searchQuery, theme, isCardDrag, isColDrag, isCollapsed, isLocked, colMaxHeight, canMoveUp, canMoveDown }) {
+export function SortableColumn({ col, selectedCard, onSelectCard, onAddCard, onDeleteCard, onOpenInDaw, onRenameCol, onDeleteCol, onDuplicateCol, onChangeColor, onToggleCollapse, onToggleLock, onClearCol, onMoveRowUp, onMoveRowDown, onMoveToNewRow, allTags, sortBy, sortDir, activeFilters, searchQuery, theme, isCardDrag, isColDrag, isCollapsed, isLocked, colMaxHeight, canMoveUp, canMoveDown, activeDragCardId }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: col.id,
     data: { type: "column" },
@@ -388,6 +388,7 @@ export function SortableColumn({ col, selectedCard, onSelectCard, onAddCard, onD
                   allTags={allTags}
                   theme={theme}
                   isLocked={isLocked}
+                  activeDragCardId={activeDragCardId}
                 />
               ))}
             </SortableContext>
