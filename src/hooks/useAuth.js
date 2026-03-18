@@ -42,6 +42,12 @@ export function useAuth() {
     return { data, error };
   }
 
+  async function resetPassword(email) {
+    if (!supabase) return { error: new Error("Supabase not configured") };
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: "http://localhost:1420" });
+    return { error };
+  }
+
   async function signOut() {
     if (supabase) await supabase.auth.signOut();
     setUser(null);
@@ -63,5 +69,5 @@ export function useAuth() {
   // The user's display initial for the avatar
   const initial = user?.email?.[0]?.toUpperCase() ?? null;
 
-  return { user, loading, isOffline, initial, signIn, signUp, signOut, goOffline, leaveOffline };
+  return { user, loading, isOffline, initial, signIn, signUp, signOut, resetPassword, goOffline, leaveOffline };
 }

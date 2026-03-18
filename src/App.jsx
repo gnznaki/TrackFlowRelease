@@ -56,7 +56,7 @@ function makeDefaultPages() {
 }
 
 function App() {
-  const { user, loading: authLoading, isOffline, initial, signIn, signUp, signOut, goOffline } = useAuth();
+  const { user, loading: authLoading, isOffline, initial, signIn, signUp, signOut, resetPassword, goOffline } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -359,7 +359,7 @@ function App() {
   );
 
   if (!user && !isOffline) return (
-    <AuthScreenInner signIn={signIn} signUp={signUp} onOffline={goOffline} />
+    <AuthScreenInner signIn={signIn} signUp={signUp} onOffline={goOffline} resetPassword={resetPassword} />
   );
 
   if (!ready) return (
@@ -821,47 +821,64 @@ function App() {
             <div style={{ position: "fixed", inset: 0, zIndex: 9998 }} onClick={() => setShowProfileDropdown(false)} />
           )}
           {showProfileDropdown && user && (
-            <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: theme.surface, border: `1px solid ${theme.border2}`, borderRadius: theme.r, boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 200, zIndex: 9999, overflow: "hidden", fontFamily: font || "Syne" }}>
-              <div style={{ padding: "12px 14px 10px", borderBottom: `1px solid ${theme.border}` }}>
-                {editingDisplayName ? (
-                  <input
-                    autoFocus
-                    value={displayNameDraft}
-                    onChange={e => setDisplayNameDraft(e.target.value)}
-                    onBlur={() => { updateDisplayName(displayNameDraft); setEditingDisplayName(false); }}
-                    onKeyDown={e => { if (e.key === "Enter") { updateDisplayName(displayNameDraft); setEditingDisplayName(false); } if (e.key === "Escape") setEditingDisplayName(false); e.stopPropagation(); }}
-                    placeholder="Display name"
-                    style={{ width: "100%", background: theme.surface2, border: `1px solid ${theme.accent}60`, borderRadius: theme.r - 2, padding: "4px 8px", color: theme.text, fontFamily: font || "Syne", fontSize: 12, fontWeight: 700, outline: "none" }}
-                  />
-                ) : (
-                  <div
-                    onClick={() => { setDisplayNameDraft(displayName || ""); setEditingDisplayName(true); }}
-                    title="Click to set display name"
-                    style={{ fontSize: 12, fontWeight: 700, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "text" }}>
-                    {displayName || <span style={{ color: theme.text3, fontWeight: 400 }}>Add display name…</span>}
+            <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: theme.surface, border: `1px solid ${theme.border2}`, borderRadius: theme.r, boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 240, zIndex: 9999, overflow: "hidden", fontFamily: font || "Syne" }}>
+              {/* Header — avatar + name + email */}
+              <div style={{ padding: "14px 16px 12px", borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: "50%", background: `linear-gradient(135deg, ${theme.accent}, #47c8ff)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, color: theme.accentText, flexShrink: 0 }}>
+                  {displayName ? displayName[0].toUpperCase() : (user.email?.[0]?.toUpperCase() ?? "?")}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {editingDisplayName ? (
+                    <input
+                      autoFocus
+                      value={displayNameDraft}
+                      onChange={e => setDisplayNameDraft(e.target.value)}
+                      onBlur={() => { updateDisplayName(displayNameDraft); setEditingDisplayName(false); }}
+                      onKeyDown={e => { if (e.key === "Enter") { updateDisplayName(displayNameDraft); setEditingDisplayName(false); } if (e.key === "Escape") setEditingDisplayName(false); e.stopPropagation(); }}
+                      placeholder="Display name"
+                      style={{ width: "100%", background: theme.surface2, border: `1px solid ${theme.accent}60`, borderRadius: theme.r - 2, padding: "4px 8px", color: theme.text, fontFamily: font || "Syne", fontSize: 13, fontWeight: 800, outline: "none" }}
+                    />
+                  ) : (
+                    <div
+                      onClick={() => { setDisplayNameDraft(displayName || ""); setEditingDisplayName(true); }}
+                      title="Click to set display name"
+                      style={{ fontSize: 16, fontWeight: 800, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "text" }}>
+                      {displayName || <span style={{ color: theme.text3, fontWeight: 400, fontSize: 13 }}>Add display name…</span>}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: theme.text3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</div>
+                  <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
+                      background: tier === "team" ? "#47c8ff22" : tier === "pro" ? `${theme.accent}22` : theme.surface3,
+                      color: tier === "team" ? "#47c8ff" : tier === "pro" ? theme.accent : theme.text3,
+                      textTransform: "capitalize",
+                    }}>{tier}</span>
+                    {!isPro && (
+                      <span onClick={() => { setShowUpgradeModal(true); setShowProfileDropdown(false); }} style={{ fontSize: 10, color: theme.accent, cursor: "pointer" }}>Upgrade</span>
+                    )}
                   </div>
-                )}
-                <div style={{ fontSize: 10, color: theme.text3, marginTop: 2 }}>{user.email}</div>
-                <div style={{ fontSize: 10, color: theme.text3, textTransform: "capitalize" }}>{tier} plan{!isPro && " · "}{!isPro && <span onClick={() => { setShowUpgradeModal(true); setShowProfileDropdown(false); }} style={{ color: theme.accent, cursor: "pointer" }}>Upgrade</span>}</div>
+                </div>
               </div>
               {[
                 { label: "Customize Theme", icon: Icons.theme, action: () => { setShowThemeCustomizer(true); setShowProfileDropdown(false); } },
                 { label: "Profile Settings", icon: Icons.settings, action: () => { setShowProfileDropdown(false); } },
+                { label: "Keyboard Shortcuts", icon: Icons.tag, action: () => { setShowProfileDropdown(false); } },
               ].map((item, i) => (
                 <div key={i} onClick={item.action}
-                  style={{ padding: "9px 14px", cursor: "pointer", fontSize: 12, color: theme.text2, display: "flex", alignItems: "center", gap: 9 }}
+                  style={{ padding: "10px 16px", cursor: "pointer", fontSize: 12, color: theme.text2, display: "flex", alignItems: "center", gap: 10 }}
                   onMouseEnter={e => e.currentTarget.style.background = theme.surface2}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                  <Icon d={item.icon} size={12} style={{ color: theme.text3 }} />
+                  <Icon d={item.icon} size={13} style={{ color: theme.text3 }} />
                   {item.label}
                 </div>
               ))}
               <div style={{ height: 1, background: theme.border, margin: "4px 0" }} />
               <div onClick={() => { signOut(); setShowProfileDropdown(false); }}
-                style={{ padding: "9px 14px", cursor: "pointer", fontSize: 12, color: "#ff5050", display: "flex", alignItems: "center", gap: 9 }}
-                onMouseEnter={e => e.currentTarget.style.background = theme.surface2}
+                style={{ padding: "10px 16px", cursor: "pointer", fontSize: 12, color: "#ff5050", display: "flex", alignItems: "center", gap: 10 }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,80,80,0.08)"; }}
                 onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                <Icon d={Icons.close} size={12} />
+                <Icon d={Icons.close} size={13} />
                 Log Out
               </div>
             </div>
@@ -897,7 +914,7 @@ function App() {
       {/* Auth modal for offline users who want to sign in */}
       {showAuthModal && !user && (
         <div style={{ position: "fixed", inset: 0, zIndex: 10000 }}>
-          <AuthScreenInner signIn={signIn} signUp={signUp} onOffline={() => setShowAuthModal(false)} />
+          <AuthScreenInner signIn={signIn} signUp={signUp} onOffline={() => setShowAuthModal(false)} resetPassword={resetPassword} />
         </div>
       )}
 
