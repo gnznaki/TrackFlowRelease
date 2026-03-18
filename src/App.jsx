@@ -1177,6 +1177,7 @@ function App() {
                               allTags={customTags} sortBy={sortBy} sortDir={sortDir}
                               activeFilters={activeTagFilters} searchQuery={searchQuery} theme={theme}
                               isCardDrag={isCardDrag}
+                              isColDrag={!isCardDrag && activeColId !== null}
                               isCollapsed={collapsedCols.includes(col.id)} isLocked={lockedCols.includes(col.id)}
                               colMaxHeight={colMaxHeight}
                               canMoveUp={isGridView && rowIdx > 0} canMoveDown={isGridView && (layout.length < 4 || rowIdx < layout.length - 1)} />

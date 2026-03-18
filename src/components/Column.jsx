@@ -126,7 +126,7 @@ function SortableCard({ card, isSelected, onClick, onDelete, onOpenInDaw, allTag
   );
 }
 
-function CardDropZone({ colId, children, theme, isCardDrag, colMaxHeight, isEmpty, hasActiveFilters }) {
+function CardDropZone({ colId, children, theme, isCardDrag, isColDrag, colMaxHeight, isEmpty, hasActiveFilters }) {
   const { setNodeRef, isOver } = useDroppable({ id: "zone-" + colId, disabled: !isCardDrag });
   return (
     <div
@@ -134,7 +134,8 @@ function CardDropZone({ colId, children, theme, isCardDrag, colMaxHeight, isEmpt
       style={{
         padding: 12,
         height: colMaxHeight,
-        overflowY: "auto",
+        overflowY: isColDrag ? "hidden" : "auto",
+        pointerEvents: isColDrag ? "none" : undefined,
         background: isOver && isCardDrag
           ? `rgba(${theme.accentRgb},0.1)`
           : "transparent",
@@ -154,7 +155,7 @@ function CardDropZone({ colId, children, theme, isCardDrag, colMaxHeight, isEmpt
   );
 }
 
-export function SortableColumn({ col, selectedCard, onSelectCard, onAddCard, onDeleteCard, onOpenInDaw, onRenameCol, onDeleteCol, onDuplicateCol, onChangeColor, onToggleCollapse, onToggleLock, onClearCol, onMoveRowUp, onMoveRowDown, onMoveToNewRow, allTags, sortBy, sortDir, activeFilters, searchQuery, theme, isCardDrag, isCollapsed, isLocked, colMaxHeight, canMoveUp, canMoveDown }) {
+export function SortableColumn({ col, selectedCard, onSelectCard, onAddCard, onDeleteCard, onOpenInDaw, onRenameCol, onDeleteCol, onDuplicateCol, onChangeColor, onToggleCollapse, onToggleLock, onClearCol, onMoveRowUp, onMoveRowDown, onMoveToNewRow, allTags, sortBy, sortDir, activeFilters, searchQuery, theme, isCardDrag, isColDrag, isCollapsed, isLocked, colMaxHeight, canMoveUp, canMoveDown }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: col.id,
     data: { type: "column" },
@@ -370,6 +371,7 @@ export function SortableColumn({ col, selectedCard, onSelectCard, onAddCard, onD
             colId={col.id}
             theme={theme}
             isCardDrag={isCardDrag && !isLocked}
+            isColDrag={isColDrag}
             colMaxHeight={colMaxHeight}
             isEmpty={sortedCards.length === 0}
             hasActiveFilters={activeFilters.length > 0 || !!searchQuery}
