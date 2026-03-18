@@ -82,8 +82,8 @@ function ColumnPickerModal({ cols, message, onPick, onCancel, theme }) {
 
 function makeDefaultPages() {
   return [
-    { id: "producer", name: "Producer", boardId: crypto.randomUUID(), columns: PRODUCER_COLUMNS, layout: [PRODUCER_COLUMNS.map(c => c.id)] },
-    { id: "engineer", name: "Engineer", boardId: crypto.randomUUID(), columns: ENGINEER_COLUMNS, layout: [ENGINEER_COLUMNS.map(c => c.id)] },
+    { id: "producer", name: "Producer", color: "#c8ff47", boardId: crypto.randomUUID(), columns: PRODUCER_COLUMNS, layout: [PRODUCER_COLUMNS.map(c => c.id)] },
+    { id: "engineer", name: "Engineer", color: "#47c8ff", boardId: crypto.randomUUID(), columns: ENGINEER_COLUMNS, layout: [ENGINEER_COLUMNS.map(c => c.id)] },
   ];
 }
 
@@ -97,6 +97,7 @@ function App() {
   const [currentPageId, setCurrentPageId] = useState("producer");
   const [pageContextMenu, setPageContextMenu] = useState(null); // { pageId, x, y }
   const [editingPageId, setEditingPageId] = useState(null);
+  const [pageColorPicker, setPageColorPicker] = useState(null); // { pageId, value, x, y }
 
   const [layoutView, setLayoutView] = useState("grid");
   const [projectsCollapsed, setProjectsCollapsed] = useState(false);
@@ -457,9 +458,13 @@ function App() {
   }
 
   function handleCreatePage() {
+    const palette = ["#b847ff", "#ff6b47", "#3af0b0", "#ff4780", "#c8ff47", "#47c8ff"];
+    const usedColors = new Set(pages.map(p => p.color));
+    const nextColor = palette.find(c => !usedColors.has(c)) || palette[pages.length % palette.length];
     const newPage = {
       id: Date.now().toString(),
       name: "New Page",
+      color: nextColor,
       boardId: crypto.randomUUID(),
       columns: [],
       layout: [],
@@ -472,6 +477,10 @@ function App() {
   function handleRenamePage(pageId, name) {
     if (!name.trim()) return;
     setPages(ps => ps.map(p => p.id === pageId ? { ...p, name: name.trim() } : p));
+  }
+
+  function handleChangePageColor(pageId, color) {
+    setPages(ps => ps.map(p => p.id === pageId ? { ...p, color } : p));
   }
 
   function handleDeletePage(pageId) {
@@ -713,7 +722,7 @@ function App() {
     if (ok) { setShowErrorBar(false); setErrorLog([]); } else alert("Send failed. Check webhook URL.");
   }
 
-  const modeAccent = pageIndex === 1 ? "#47c8ff" : theme.accent;
+  const modeAccent = currentPage?.color || theme.accent;
   const activeColData = activeColId ? columns.find(c => c.id === activeColId) : null;
 
   return (
@@ -773,8 +782,8 @@ function App() {
         {/* Page tabs */}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <div style={{ display: "flex", background: theme.surface2, border: `1px solid ${theme.border}`, borderRadius: theme.r, padding: 3, gap: 2, alignItems: "center" }}>
-            {pages.map((page, idx) => {
-              const tabAccent = idx === 1 ? "#47c8ff" : theme.accent;
+            {pages.map((page) => {
+              const tabColor = page.color || theme.accent;
               const isActive = page.id === currentPageId;
               return (
                 <div
@@ -782,7 +791,8 @@ function App() {
                   onClick={() => switchPage(page.id)}
                   onDoubleClick={() => { switchPage(page.id); setEditingPageId(page.id); }}
                   onContextMenu={e => { e.preventDefault(); setPageContextMenu({ pageId: page.id, x: e.clientX, y: e.clientY }); }}
-                  style={{ padding: "4px 10px", borderRadius: theme.r - 2, background: isActive ? theme.surface3 : "transparent", color: isActive ? tabAccent : theme.text3, fontFamily: font || "Syne", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, userSelect: "none" }}>
+                  style={{ padding: "4px 10px", borderRadius: theme.r - 2, background: isActive ? theme.surface3 : "transparent", color: isActive ? tabColor : theme.text3, fontFamily: font || "Syne", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, userSelect: "none" }}>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: tabColor, flexShrink: 0, opacity: isActive ? 1 : 0.45, transition: "opacity 0.15s" }} />
                   {editingPageId === page.id ? (
                     <input
                       autoFocus
@@ -790,7 +800,7 @@ function App() {
                       onBlur={e => { handleRenamePage(page.id, e.target.value); setEditingPageId(null); }}
                       onKeyDown={e => { if (e.key === "Enter") e.target.blur(); if (e.key === "Escape") setEditingPageId(null); e.stopPropagation(); }}
                       onClick={e => e.stopPropagation()}
-                      style={{ width: 80, background: "transparent", border: "none", borderBottom: `1px solid ${tabAccent}`, color: "inherit", fontFamily: "inherit", fontSize: "inherit", fontWeight: "inherit", outline: "none", padding: 0 }}
+                      style={{ width: 80, background: "transparent", border: "none", borderBottom: `1px solid ${tabColor}`, color: "inherit", fontFamily: "inherit", fontSize: "inherit", fontWeight: "inherit", outline: "none", padding: 0 }}
                     />
                   ) : (
                     <span>{page.name}</span>
@@ -961,6 +971,11 @@ function App() {
           style={{ position: "fixed", left: pageContextMenu.x, top: pageContextMenu.y, background: theme.surface, border: `1px solid ${theme.border2}`, borderRadius: theme.r, boxShadow: "0 8px 24px rgba(0,0,0,0.4)", minWidth: 160, zIndex: 10001, overflow: "hidden", fontFamily: font || "Syne" }}>
           {[
             { label: "Rename", action: () => { setEditingPageId(pageContextMenu.pageId); switchPage(pageContextMenu.pageId); setPageContextMenu(null); } },
+            { label: "Change Color", action: () => {
+              const pg = pages.find(p => p.id === pageContextMenu.pageId);
+              setPageColorPicker({ pageId: pageContextMenu.pageId, value: pg?.color || theme.accent, x: pageContextMenu.x, y: pageContextMenu.y });
+              setPageContextMenu(null);
+            }},
             { label: "New Page", action: () => { handleCreatePage(); setPageContextMenu(null); } },
             ...(pages.length > 1 ? [{ label: "Delete Page", action: () => { handleDeletePage(pageContextMenu.pageId); setPageContextMenu(null); }, danger: true }] : []),
           ].map((item, i) => (
@@ -973,6 +988,32 @@ function App() {
               {item.label}
             </div>
           ))}
+        </div>,
+        document.body
+      )}
+
+      {/* Page color picker popover */}
+      {pageColorPicker && createPortal(
+        <div style={{ position: "fixed", inset: 0, zIndex: 10000 }} onMouseDown={() => setPageColorPicker(null)}>
+          <div
+            onMouseDown={e => e.stopPropagation()}
+            style={{ position: "fixed", left: Math.min(pageColorPicker.x, window.innerWidth - 260), top: Math.min(pageColorPicker.y, window.innerHeight - 130), width: 250, background: theme.surface, border: `1px solid ${theme.border2}`, borderRadius: theme.r2, boxShadow: "0 18px 60px rgba(0,0,0,0.55)", overflow: "hidden", fontFamily: font || "Syne" }}>
+            <div style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>Page color</span>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => { handleChangePageColor(pageColorPicker.pageId, pageColorPicker.value); setPageColorPicker(null); }} style={{ padding: "4px 10px", borderRadius: 8, border: "none", background: theme.accent, color: theme.accentText, cursor: "pointer", fontWeight: 800, fontSize: 12 }}>✓</button>
+                <button onClick={() => setPageColorPicker(null)} style={{ padding: "4px 10px", borderRadius: 8, border: `1px solid ${theme.border2}`, background: theme.surface2, color: theme.text2, cursor: "pointer", fontWeight: 700, fontSize: 12 }}>Cancel</button>
+              </div>
+            </div>
+            <div style={{ padding: 12, display: "flex", gap: 12, alignItems: "center" }}>
+              <input type="color" value={pageColorPicker.value} onChange={e => setPageColorPicker(p => ({ ...p, value: e.target.value }))} style={{ width: 44, height: 44, border: "none", background: "transparent", cursor: "pointer" }} />
+              <input
+                value={pageColorPicker.value}
+                onChange={e => setPageColorPicker(p => ({ ...p, value: e.target.value }))}
+                style={{ flex: 1, background: theme.surface2, border: `1px solid ${theme.border}`, borderRadius: 10, padding: "10px 10px", color: theme.text, fontFamily: "monospace", fontSize: 12, outline: "none" }}
+              />
+            </div>
+          </div>
         </div>,
         document.body
       )}
