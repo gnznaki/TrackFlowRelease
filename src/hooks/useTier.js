@@ -60,7 +60,7 @@ export function useTier(userId) {
     updateDisplayName,
     updateAvatarColor,
     isFree: tier === "free",
-    isPremium: tier === "premium",
-    isPaid: tier === "premium",
+    isPremium: tier === "premium" || tier === "pro",
+    isPaid: tier === "premium" || tier === "pro",
   };
 }

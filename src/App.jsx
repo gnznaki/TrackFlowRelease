@@ -617,8 +617,12 @@ function App() {
 
     const overIdStr = String(over.id);
     const isZone = overIdStr.startsWith("zone-");
-    const overCardId = isZone ? null : overIdStr;
-    const targetColId = isZone ? overIdStr.replace("zone-", "") : null;
+    // closestCenter can return a column ID (from the row's SortableContext) when hovering
+    // over a column header in a different row. Treat that the same as hovering over its zone
+    // so cross-row card drags still land at the end of the target column.
+    const isColId = !isZone && columnsRef.current.some(c => c.id === overIdStr);
+    const overCardId = (!isZone && !isColId) ? overIdStr : null;
+    const targetColId = isZone ? overIdStr.replace("zone-", "") : (isColId ? overIdStr : null);
 
     setColumns(cols => {
       const currentSrc = cols.find(col => col.cards.some(c => c.id === active.id));
