@@ -591,24 +591,15 @@ function App() {
           if (parentCol) resolvedOverId = parentCol.id;
         }
         const overRow = lyt.findIndex(row => row.includes(resolvedOverId));
-        if (activeRow !== -1 && overRow !== -1 && activeId !== resolvedOverId) {
-          if (activeRow === overRow) {
-            const row = lyt[activeRow];
-            const fi = row.indexOf(activeId);
-            const ti = row.indexOf(resolvedOverId);
-            if (fi !== -1 && ti !== -1 && fi !== ti) {
-              const newLayout = lyt.map((r, i) => i === activeRow ? arrayMove(r, fi, ti) : r);
-              const same = JSON.stringify(newLayout) === JSON.stringify(lyt);
-              if (!same) { setLayout(newLayout); layoutRef.current = newLayout; }
-            }
-          } else {
-            const next = lyt.map(r => [...r]);
-            next[activeRow] = next[activeRow].filter(id => id !== activeId);
-            const insertAt = Math.max(0, next[overRow].indexOf(resolvedOverId));
-            next[overRow].splice(insertAt, 0, activeId);
-            const cleaned = next.filter(r => r.length > 0);
-            const same = JSON.stringify(cleaned) === JSON.stringify(lyt);
-            if (!same) { setLayout(cleaned); layoutRef.current = cleaned; }
+        // Only reorder within the same row — columns in other rows stay put
+        if (activeRow !== -1 && overRow !== -1 && activeRow === overRow && activeId !== resolvedOverId) {
+          const row = lyt[activeRow];
+          const fi = row.indexOf(activeId);
+          const ti = row.indexOf(resolvedOverId);
+          if (fi !== -1 && ti !== -1 && fi !== ti) {
+            const newLayout = lyt.map((r, i) => i === activeRow ? arrayMove(r, fi, ti) : r);
+            const same = JSON.stringify(newLayout) === JSON.stringify(lyt);
+            if (!same) { setLayout(newLayout); layoutRef.current = newLayout; }
           }
           return;
         }
