@@ -1,5 +1,8 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { overflow: hidden; }
+/* Suppress browser-native password reveal button (Edge/Chrome) */
+input::-ms-reveal,
+input::-ms-clear { display: none; }
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }

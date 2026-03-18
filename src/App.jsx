@@ -836,7 +836,7 @@ function App() {
           createdAt={createdAt}
           isPaid={isPaid}
           isPremium={isPremium}
-          isOngoing={isOngoing}
+
           onUpdateDisplayName={async (name) => { await updateDisplayName(name); }}
           onUpdateAvatarColor={updateAvatarColor}
           onResetPassword={async () => { await resetPassword(user.email); }}

@@ -32,17 +32,6 @@ const PLANS_INFO = {
       "Early access to new features",
     ],
   },
-  ongoing: {
-    name: "Cloud",
-    color: "#47c8ff",
-    features: [
-      "Everything in Premium",
-      "Up to 10 shared boards",
-      "Team member management",
-      "Admin controls",
-      "Priority support",
-    ],
-  },
 };
 
 function Check({ color }) {
@@ -70,7 +59,6 @@ export default function ProfileModal({
   createdAt,
   isPaid,
   isPremium,
-  isOngoing,
   onUpdateDisplayName,
   onUpdateAvatarColor,
   onResetPassword,
@@ -99,9 +87,8 @@ export default function ProfileModal({
   const grad = AVATAR_GRADIENTS.find(g => g.key === (avatarColor || "lime")) || AVATAR_GRADIENTS[0];
   const avatarLetter = displayName ? displayName[0].toUpperCase() : (user?.email?.[0]?.toUpperCase() ?? "?");
 
-  const tierPlan = PLANS_INFO[tier] || PLANS_INFO.free;
-  const tierColor = tierPlan.color ||
-    (tier === "premium" ? C.accent : tier === "ongoing" ? "#47c8ff" : C.text3);
+  const tierPlan = isPremium ? PLANS_INFO.premium : PLANS_INFO.free;
+  const tierColor = isPremium ? C.accent : C.text3;
 
   async function handleSaveName() {
     if (!nameDraft.trim()) return;
@@ -214,8 +201,8 @@ export default function ProfileModal({
                 fontWeight: 700,
                 padding: "3px 10px",
                 borderRadius: 20,
-                background: tier === "ongoing" ? "#47c8ff22" : tier === "premium" ? `${C.accent}22` : C.surface3,
-                color: tier === "ongoing" ? "#47c8ff" : tier === "premium" ? C.accent : C.text3,
+                background: isPremium ? `${C.accent}22` : C.surface3,
+                color: isPremium ? C.accent : C.text3,
                 textTransform: "uppercase",
                 letterSpacing: "0.07em",
               }}>
