@@ -133,10 +133,17 @@ export default function SettingsPanel({ discordWebhook, colMaxHeight, onSave, on
     }
 
     if (updatePhase === "error") {
+      const isNoRelease = updateError?.toLowerCase().includes("release") || updateError?.toLowerCase().includes("fetch") || updateError?.toLowerCase().includes("json") || updateError?.toLowerCase().includes("404");
       return (
         <div style={{ padding: 16, background: s.surface2, borderRadius: s.r, border: `1px solid #ff505040` }}>
-          <div style={{ fontSize: 12, color: "#ff5050", marginBottom: 8, fontWeight: 600 }}>Update failed</div>
-          <div style={{ fontSize: 11, color: s.text3, fontFamily: "monospace", marginBottom: 12, wordBreak: "break-all" }}>{updateError}</div>
+          <div style={{ fontSize: 12, color: "#ff5050", marginBottom: 6, fontWeight: 600 }}>Could not check for updates</div>
+          {isNoRelease ? (
+            <div style={{ fontSize: 11, color: s.text3, lineHeight: 1.6, marginBottom: 12 }}>
+              No release found on GitHub yet. After running <span style={{ fontFamily: "monospace", background: s.surface3, padding: "1px 5px", borderRadius: 4 }}>tauri build</span>, upload the generated <span style={{ fontFamily: "monospace", background: s.surface3, padding: "1px 5px", borderRadius: 4 }}>latest.json</span> and the <span style={{ fontFamily: "monospace", background: s.surface3, padding: "1px 5px", borderRadius: 4 }}>.nsis.zip</span> to your GitHub release.
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: s.text3, fontFamily: "monospace", marginBottom: 12, wordBreak: "break-all" }}>{updateError}</div>
+          )}
           <button onClick={checkUpdate} style={{ padding: "6px 14px", background: s.surface3, border: `1px solid ${s.border2}`, borderRadius: s.r, color: s.text, fontFamily: "Syne", fontSize: 12, cursor: "pointer" }}>
             Try Again
           </button>

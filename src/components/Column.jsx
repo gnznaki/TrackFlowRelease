@@ -391,7 +391,12 @@ export function SortableColumn({ col, selectedCard, onSelectCard, onAddCard, onD
               <div style={{ textAlign: "center", padding: "16px 0", color: theme.text3, fontSize: 12 }}>No cards match filter</div>
             )}
             {!isLocked && (
-              <button onClick={() => onAddCard(col.id)} style={{ width: "100%", padding: "7px", background: "transparent", border: `1px dashed ${theme.border2}`, borderRadius: theme.r, color: theme.text3, cursor: "pointer", fontSize: 12, marginTop: 4, fontFamily: theme.font || "Syne" }}>
+              <button
+                onClick={() => onAddCard(col.id)}
+                style={{ width: "100%", padding: "7px", background: "transparent", border: `1px solid ${theme.accent}40`, borderRadius: theme.r, color: theme.accent + "bb", cursor: "pointer", fontSize: 12, marginTop: 4, fontFamily: theme.font || "Syne", transition: "border-color 0.15s, color 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + "99"; e.currentTarget.style.color = theme.accent; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = theme.accent + "40"; e.currentTarget.style.color = theme.accent + "bb"; }}
+              >
                 + Add Project
               </button>
             )}

@@ -48,6 +48,36 @@ function RowDropZone({ id, children, hint, isGridView, isCardDrag, activeColId, 
   );
 }
 
+// Column picker modal — replaces window.prompt() for rescan/add-folder flows
+function ColumnPickerModal({ cols, message, onPick, onCancel, theme }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9000 }} onClick={onCancel}>
+      <div onClick={e => e.stopPropagation()} style={{ background: theme.surface, border: `1px solid ${theme.border2}`, borderRadius: theme.r2, padding: 24, width: 340, boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 6 }}>{message}</div>
+        <div style={{ fontSize: 12, color: theme.text3, marginBottom: 18 }}>Select a column below.</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {cols.map(col => (
+            <button
+              key={col.id}
+              onClick={() => onPick(col.id)}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: theme.surface2, border: `1px solid ${theme.border}`, borderRadius: theme.r, cursor: "pointer", textAlign: "left", transition: "border-color 0.15s, background 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = col.color + "80"; e.currentTarget.style.background = theme.surface3; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.surface2; }}
+            >
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: col.color, flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: theme.text }}>{col.title}</span>
+              <span style={{ fontSize: 11, fontFamily: "monospace", color: theme.text3, background: theme.surface3, padding: "2px 7px", borderRadius: 8 }}>{col.cards.length}</span>
+            </button>
+          ))}
+        </div>
+        <button onClick={onCancel} style={{ marginTop: 14, width: "100%", padding: "8px", background: "transparent", border: `1px solid ${theme.border}`, borderRadius: theme.r, color: theme.text3, cursor: "pointer", fontSize: 12 }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function makeDefaultPages() {
   return [
     { id: "producer", name: "Producer", boardId: crypto.randomUUID(), columns: PRODUCER_COLUMNS, layout: [PRODUCER_COLUMNS.map(c => c.id)] },
@@ -97,6 +127,7 @@ function App() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
+  const [colPickerState, setColPickerState] = useState(null); // { cols, message, resolve }
 
   const { tier, isPro, displayName, updateDisplayName } = useTier(user?.id);
   const [editingDisplayName, setEditingDisplayName] = useState(false);
@@ -634,14 +665,11 @@ function App() {
     setLayout(lyt.length > 0 ? [...lyt.slice(0, -1), [...lyt[lyt.length - 1], newId]] : [[newId]]);
   }
 
-  function pickTargetColumnId(cols, message) {
-    if (!cols || cols.length === 0) return null;
-    const list = cols.map((c, i) => `${i + 1}. ${c.title}`).join("\n");
-    const input = prompt(`${message}\n\n${list}\n\nType a number (1-${cols.length}) or leave blank for the first column:`);
-    if (!input) return cols[0].id;
-    const n = Number(input);
-    if (!Number.isFinite(n) || n < 1 || n > cols.length) return cols[0].id;
-    return cols[n - 1].id;
+  // Async column picker — shows the ColumnPickerModal and resolves with the chosen colId
+  function askPickColumn(cols, message) {
+    return new Promise(resolve => {
+      setColPickerState({ cols, message, resolve });
+    });
   }
 
   async function handleAddFolder() {
@@ -649,13 +677,14 @@ function App() {
     setWatchedFolders(prev => [...new Set([...prev, ...result.folders])]);
     if (result.files.length === 0) { alert("No DAW projects found."); return; }
     const withMeta = await Promise.all(result.files.map(async f => { try { return { ...f, fileModified: await invoke("get_file_modified", { path: f.path }) }; } catch (e) { return f; } }));
-    setColumns(cols => {
-      if (cols.length === 0) return cols;
-      const targetId = pickTargetColumnId(cols, "Add new projects into which column?");
-      const existing = new Set(cols.flatMap(c => c.cards.map(x => x.path)));
+    const cols = columnsRef.current;
+    if (cols.length === 0) return;
+    const targetId = cols.length === 1 ? cols[0].id : await askPickColumn(cols, `Found ${withMeta.length} projects — add into which column?`);
+    if (!targetId) return;
+    setColumns(prev => {
+      const existing = new Set(prev.flatMap(c => c.cards.map(x => x.path)));
       const newCards = withMeta.filter(f => !existing.has(f.path));
-      alert(`Found ${newCards.length} new projects!`);
-      return cols.map(col => col.id === targetId ? { ...col, cards: [...col.cards, ...newCards] } : col);
+      return prev.map(col => col.id === targetId ? { ...col, cards: [...col.cards, ...newCards] } : col);
     });
   }
 
@@ -663,13 +692,14 @@ function App() {
     if (watchedFolders.length === 0) { alert("Add a folder first."); return; }
     const found = await scanForProjects(watchedFolders); if (found.length === 0) { alert("No new projects found."); return; }
     const withMeta = await Promise.all(found.map(async f => { try { return { ...f, fileModified: await invoke("get_file_modified", { path: f.path }) }; } catch (e) { return f; } }));
-    setColumns(cols => {
-      if (cols.length === 0) return cols;
-      const targetId = pickTargetColumnId(cols, "Rescan found new projects. Add into which column?");
-      const existing = new Set(cols.flatMap(c => c.cards.map(x => x.path)));
+    const cols = columnsRef.current;
+    if (cols.length === 0) return;
+    const targetId = cols.length === 1 ? cols[0].id : await askPickColumn(cols, `Rescan found ${found.length} projects — add into which column?`);
+    if (!targetId) return;
+    setColumns(prev => {
+      const existing = new Set(prev.flatMap(c => c.cards.map(x => x.path)));
       const newCards = withMeta.filter(f => !existing.has(f.path));
-      alert(`Found ${newCards.length} new projects!`);
-      return cols.map(col => col.id === targetId ? { ...col, cards: [...col.cards, ...newCards] } : col);
+      return prev.map(col => col.id === targetId ? { ...col, cards: [...col.cards, ...newCards] } : col);
     });
   }
 
@@ -685,6 +715,15 @@ function App() {
 
   return (
     <div style={{ fontFamily: font || "Syne", background: theme.bg, color: theme.text, height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", transition: "background 0.3s" }}>
+      {colPickerState && (
+        <ColumnPickerModal
+          cols={colPickerState.cols}
+          message={colPickerState.message}
+          onPick={colId => { colPickerState.resolve(colId); setColPickerState(null); }}
+          onCancel={() => { colPickerState.resolve(null); setColPickerState(null); }}
+          theme={theme}
+        />
+      )}
       {showUpgradeModal && <UpgradeModal tier={tier} onClose={() => setShowUpgradeModal(false)} theme={theme} />}
       {showShareModal && user && <ShareModal boardId={currentBoardId} boardName={currentPage?.name || "Board"} mode={currentPageId} isShared={isCurrentBoardShared} user={user} onShare={handleShareBoard} onJoin={handleJoinBoard} onLeave={handleLeaveBoard} fetchMembers={fetchMembers} onClose={() => setShowShareModal(false)} theme={theme} />}
       {showTagManager && <TagManager allTags={customTags} onAddTag={tag => { if (!customTags.find(t => t.label === tag.label)) setCustomTags(p => [...p, tag]); }} onDeleteTag={l => setCustomTags(p => p.filter(t => t.label !== l))} onClose={() => setShowTagManager(false)} theme={theme} />}
