@@ -184,6 +184,54 @@ function App() {
   const rafColumnReorderRef = useRef(null);
   const savedGridLayoutRef = useRef({});
 
+  // ── CUSTOM CARD-DRAG COLUMN SCROLL ────────────────────────────────────────
+  // dnd-kit's built-in autoScroll traverses outermost containers first, so it
+  // scrolls the main content area instead of the column. We replace it with a
+  // RAF loop that always scrolls the innermost scrollable element under the pointer.
+  const cardDragPointer = useRef({ x: 0, y: 0 });
+  const cardScrollRaf = useRef(null);
+
+  useEffect(() => {
+    if (!isCardDrag) {
+      if (cardScrollRaf.current) { cancelAnimationFrame(cardScrollRaf.current); cardScrollRaf.current = null; }
+      return;
+    }
+
+    function onMove(e) { cardDragPointer.current = { x: e.clientX, y: e.clientY }; }
+    window.addEventListener("pointermove", onMove, { passive: true });
+
+    function loop() {
+      const { x, y } = cardDragPointer.current;
+      // Find innermost scrollable element under the pointer
+      const hit = document.elementFromPoint(x, y);
+      let el = hit;
+      while (el && el !== document.body) {
+        const style = window.getComputedStyle(el);
+        const oy = style.overflowY;
+        if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight) {
+          const rect = el.getBoundingClientRect();
+          const ZONE = 56; // px from edge where scrolling activates
+          if (y < rect.top + ZONE) {
+            const speed = Math.round(8 * (1 - (y - rect.top) / ZONE));
+            el.scrollTop -= speed;
+          } else if (y > rect.bottom - ZONE) {
+            const speed = Math.round(8 * (1 - (rect.bottom - y) / ZONE));
+            el.scrollTop += speed;
+          }
+          break;
+        }
+        el = el.parentElement;
+      }
+      cardScrollRaf.current = requestAnimationFrame(loop);
+    }
+    cardScrollRaf.current = requestAnimationFrame(loop);
+
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      if (cardScrollRaf.current) { cancelAnimationFrame(cardScrollRaf.current); cardScrollRaf.current = null; }
+    };
+  }, [isCardDrag]);
+
   // Single collab board hook for the current page
   const handleRemoteUpdate = useCallback((cols, lyt) => {
     const pid = currentPageIdRef.current;
@@ -1136,7 +1184,7 @@ function App() {
 
       <DndContext
         sensors={sensors}
-        autoScroll={isCardDrag}
+        autoScroll={false}
         collisionDetection={(args) => {
           const type = args.active?.data?.current?.type;
           if (type === "column") {
