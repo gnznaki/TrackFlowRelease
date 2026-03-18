@@ -57,7 +57,18 @@ export async function loadState() {
         const localMs = local?.updatedAt ?? 0;
 
         if (cloudMs > localMs) {
-          // Cloud is newer — write it back to local so next offline load is current
+          // Cloud is newer — but only use it if it has at least as many columns
+          // as local. If local has more, it means cloud is stale (e.g. sync missed
+          // some saves before an update) and local is the source of truth.
+          const countCols = state => (state?.pages || []).reduce((n, p) => n + (p.columns?.length ?? 0), 0);
+          if (local && countCols(local) > countCols(data.state)) {
+            // Local has more data — push it to cloud and use it
+            supabase.from("app_state")
+              .upsert({ id: userId, state: local, schema_version: SCHEMA_VERSION })
+              .then(() => {});
+            return local;
+          }
+          // Cloud is newer and has at least as many columns — use it
           try { await invoke("save_app_state", { state: JSON.stringify(data.state) }); } catch (e) {}
           return data.state;
         }

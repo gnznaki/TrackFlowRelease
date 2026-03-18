@@ -180,6 +180,7 @@ function App() {
   const dragStartColRef = useRef(null);
   const dragStartRowRef = useRef(null);
   const lastColumnOverRef = useRef(null);
+  const lastColumnSwapTime = useRef(0);
   const rafColumnReorderRef = useRef(null);
   const savedGridLayoutRef = useRef({});
 
@@ -532,6 +533,7 @@ function App() {
       setActiveColId(active.id);
       setIsCardDrag(false);
       lastColumnOverRef.current = null;
+      lastColumnSwapTime.current = 0;
       dragStartRowRef.current = layoutRef.current.findIndex(row => row.includes(String(active.id)));
     } else if (active.data.current?.type === "card") {
       const col = columnsRef.current.find(col => col.cards.some(c => c.id === active.id));
@@ -593,6 +595,9 @@ function App() {
         const overRow = lyt.findIndex(row => row.includes(resolvedOverId));
         // Only reorder within the same row — columns in other rows stay put
         if (activeRow !== -1 && overRow !== -1 && activeRow === overRow && activeId !== resolvedOverId) {
+          const now = Date.now();
+          if (now - lastColumnSwapTime.current < 120) return;
+          lastColumnSwapTime.current = now;
           const row = lyt[activeRow];
           const fi = row.indexOf(activeId);
           const ti = row.indexOf(resolvedOverId);
@@ -1125,6 +1130,7 @@ function App() {
 
       <DndContext
         sensors={sensors}
+        autoScroll={isCardDrag}
         collisionDetection={(args) => {
           const type = args.active?.data?.current?.type;
           if (type === "column") {
