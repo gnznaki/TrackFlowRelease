@@ -17,7 +17,21 @@
       "Bash(TAURI_SIGNING_PRIVATE_KEY_PATH=\"src-tauri/signing.key\" npm run tauri build 2>&1)",
       "Bash(set -a)",
       "Bash(source .env.local)",
-      "Bash(set +a)"
+      "Bash(set +a)",
+      "Bash(git rm:*)",
+      "Bash(supabase functions:*)",
+      "Bash(where supabase:*)",
+      "Bash(npx supabase:*)",
+      "Bash(ls:*)",
+      "Bash(gh release:*)",
+      "Bash(winget install:*)",
+      "Bash(where gh:*)",
+      "Bash(curl -s https://api.github.com/repos/gnznaki/TrackingMyFlowDog/releases/latest)",
+      "Bash(python -c \"import sys,json; r=json.load\\(sys.stdin\\); print\\(''''Tag:'''', r.get\\(''''tag_name''''\\)\\); print\\(''''Assets:'''', [a[''''name''''] for a in r.get\\(''''assets'''',[]\\)]\\)\")",
+      "WebFetch(domain:v2.tauri.app)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); w=d.get\\(''''definitions'''',{}\\).get\\(''''WindowConfig'''',{}\\); print\\(json.dumps\\({k:v for k,v in w.get\\(''''properties'''',{}\\).items\\(\\) if ''''drag'''' in k.lower\\(\\) or ''''drop'''' in k.lower\\(\\) or ''''file'''' in k.lower\\(\\)}, indent=2\\)\\)\")",
+      "Bash(grep -r \"updater\\\\|update\\\\|Update\" /c/Users/itsme/trackflow/src --include=*.js --include=*.jsx)",
+      "Bash(find /c/Users/itsme/trackflow -name .env* -o -name *secret* -o -name *key*)"
     ]
   }
 }
