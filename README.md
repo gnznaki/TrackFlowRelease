@@ -19,7 +19,7 @@ A native Windows desktop app for music producers and engineers to organize their
 
 ## Download
 
-**[Download for Windows (free)](https://github.com/gnznaki/TrackingMyFlowDog/releases/latest)**
+**[Download for Windows (free)](https://github.com/gnznaki/TrackFlowRelease/releases/latest)**
 
 Windows 10 / 11 · 64-bit · No subscription required
 
@@ -115,4 +115,4 @@ Locally on your machine at `%APPDATA%\com.trackflow.app\`. Nothing is sent to a 
 Not yet. TrackFlow is Windows-only for now. Mac and Linux builds are on the roadmap once the Windows version is stable.
 
 **Something broke — how do I report it?**  
-Use the **Contact Us** button in Settings (⚙) inside the app, or open an issue on [GitHub](https://github.com/gnznaki/TrackingMyFlowDog/issues). Crash errors are automatically reported so we often already know.
+Use the **Contact Us** button in Settings (⚙) inside the app, or open an issue on [GitHub](https://github.com/gnznaki/TrackFlowRelease/issues). Crash errors are automatically reported so we often already know.
