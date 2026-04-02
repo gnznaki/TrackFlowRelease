@@ -1,64 +1,111 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111115"/>
+      <stop offset="100%" stop-color="#0a0a0b"/>
+    </linearGradient>
+
+    <!-- Lime card glow -->
+    <filter id="lime-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Subtle shadow under lifted card -->
+    <filter id="card-shadow" x="-10%" y="-10%" width="130%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+
+    <!-- Column depth shadow -->
+    <linearGradient id="col-shimmer" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
 
   <!-- Background -->
-  <rect width="512" height="512" fill="#0a0a0b"/>
+  <rect width="512" height="512" rx="80" ry="80" fill="url(#bg-grad)"/>
 
-  <!-- Subtle inner vignette for depth -->
-  <radialGradient id="vignette" cx="50%" cy="45%" r="62%">
-    <stop offset="0%" stop-color="#161618" stop-opacity="0"/>
-    <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
+  <!-- Subtle corner vignette -->
+  <radialGradient id="vgn" cx="50%" cy="45%" r="70%">
+    <stop offset="40%" stop-color="#000" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#000" stop-opacity="0.4"/>
   </radialGradient>
-  <rect width="512" height="512" fill="url(#vignette)"/>
+  <rect width="512" height="512" rx="80" ry="80" fill="url(#vgn)"/>
 
   <!--
-    Three kanban columns, center-anchored.
-    Column width: 80px, gap: 22px
-    Total width: 3×80 + 2×22 = 284px → starts at x=114
-    Column heights staggered to create rhythm / flow feel.
-    Cards are rounded rects inside each column track.
+    Three kanban columns, centered.
+    Column width: 88px  gap: 20px
+    Total: 3×88 + 2×20 = 304px → starts at x = (512-304)/2 = 104
+    Col1: x=104  Col2: x=212  Col3: x=320
+    Columns stagger in height for visual rhythm.
   -->
 
-  <!-- === LEFT COLUMN === -->
-  <!-- Column track (dim) -->
-  <rect x="114" y="148" width="80" height="216" rx="10" ry="10" fill="#1a1a1e"/>
+  <!-- ── LEFT COLUMN ── y=144, height=220 -->
+  <rect x="104" y="144" width="88" height="222" rx="11" ry="11" fill="#1a1a1f"/>
+  <rect x="104" y="144" width="88" height="222" rx="11" ry="11" fill="url(#col-shimmer)"/>
+  <!-- Header bar -->
+  <rect x="118" y="158" width="60" height="5" rx="2.5" ry="2.5" fill="#2e2e36"/>
 
-  <!-- Card 1 — tall, lime -->
-  <rect x="122" y="158" width="64" height="80" rx="7" ry="7" fill="#c8ff47"/>
-  <!-- Card 2 — short, muted -->
-  <rect x="122" y="250" width="64" height="44" rx="7" ry="7" fill="#2e2e34"/>
-  <!-- Card 3 — medium, muted -->
-  <rect x="122" y="306" width="64" height="50" rx="7" ry="7" fill="#252528"/>
+  <!-- Card A — muted top -->
+  <rect x="112" y="175" width="72" height="46" rx="7" ry="7" fill="#242429"/>
 
+  <!-- Card B — lime accent (hero card) -->
+  <rect x="112" y="231" width="72" height="74" rx="7" ry="7" fill="#c8ff47" filter="url(#lime-glow)"/>
+  <!-- Lime card inner detail lines -->
+  <rect x="120" y="244" width="48" height="4" rx="2" ry="2" fill="rgba(0,0,0,0.25)"/>
+  <rect x="120" y="254" width="32" height="4" rx="2" ry="2" fill="rgba(0,0,0,0.15)"/>
+  <!-- Lime card tag pill -->
+  <rect x="120" y="284" width="28" height="10" rx="5" ry="5" fill="rgba(0,0,0,0.18)"/>
 
-  <!-- === MIDDLE COLUMN === -->
-  <!-- Column track (dim) -->
-  <rect x="216" y="120" width="80" height="272" rx="10" ry="10" fill="#1a1a1e"/>
-
-  <!-- Card 1 — short, muted -->
-  <rect x="224" y="130" width="64" height="44" rx="7" ry="7" fill="#252528"/>
-  <!-- Card 2 — tall, lime (primary card, middle col) -->
-  <rect x="224" y="186" width="64" height="100" rx="7" ry="7" fill="#c8ff47"/>
-  <!-- Card 3 — medium, muted -->
-  <rect x="224" y="298" width="64" height="86" rx="7" ry="7" fill="#2e2e34"/>
+  <!-- Card C — muted bottom -->
+  <rect x="112" y="315" width="72" height="38" rx="7" ry="7" fill="#1e1e24"/>
 
 
-  <!-- === RIGHT COLUMN === -->
-  <!-- Column track (dim) -->
-  <rect x="318" y="148" width="80" height="216" rx="10" ry="10" fill="#1a1a1e"/>
+  <!-- ── MIDDLE COLUMN ── y=116, height=278 (tallest) -->
+  <rect x="212" y="116" width="88" height="280" rx="11" ry="11" fill="#1a1a1f"/>
+  <rect x="212" y="116" width="88" height="280" rx="11" ry="11" fill="url(#col-shimmer)"/>
+  <!-- Header bar -->
+  <rect x="226" y="130" width="60" height="5" rx="2.5" ry="2.5" fill="#2e2e36"/>
 
-  <!-- Card 1 — medium, muted -->
-  <rect x="326" y="158" width="64" height="56" rx="7" ry="7" fill="#2e2e34"/>
-  <!-- Card 2 — short, lime accent -->
-  <rect x="326" y="226" width="64" height="44" rx="7" ry="7" fill="#c8ff47"/>
-  <!-- Card 3 — medium, muted -->
-  <rect x="326" y="282" width="64" height="74" rx="7" ry="7" fill="#252528"/>
+  <!-- Card A — medium muted -->
+  <rect x="220" y="147" width="72" height="50" rx="7" ry="7" fill="#242429"/>
 
-  <!--
-    Lime accent shine on the primary lime cards — a subtle 40% white gloss
-    at the top edge to give the cards a polished, slightly raised feel.
-  -->
-  <rect x="122" y="158" width="64" height="18" rx="7" ry="7" fill="#ffffff" fill-opacity="0.12"/>
-  <rect x="224" y="186" width="64" height="20" rx="7" ry="7" fill="#ffffff" fill-opacity="0.12"/>
-  <rect x="326" y="226" width="64" height="14" rx="7" ry="7" fill="#ffffff" fill-opacity="0.12"/>
+  <!-- Card B — lifted (simulates being dragged), slightly rotated -->
+  <g filter="url(#card-shadow)" transform="rotate(-1.5, 256, 246)">
+    <rect x="220" y="207" width="72" height="82" rx="7" ry="7" fill="#1d1d22" stroke="rgba(200,255,71,0.35)" stroke-width="1.5"/>
+    <rect x="228" y="218" width="50" height="4" rx="2" ry="2" fill="#2e2e36"/>
+    <rect x="228" y="228" width="36" height="4" rx="2" ry="2" fill="#272730"/>
+    <rect x="228" y="262" width="24" height="8" rx="4" ry="4" fill="rgba(200,255,71,0.12)"/>
+    <!-- lime text stub on tag -->
+    <rect x="232" y="264" width="16" height="4" rx="2" ry="2" fill="rgba(200,255,71,0.5)"/>
+  </g>
 
+  <!-- Card C — muted bottom -->
+  <rect x="220" y="299" width="72" height="86" rx="7" ry="7" fill="#1e1e24"/>
+
+
+  <!-- ── RIGHT COLUMN ── y=144, height=220 -->
+  <rect x="320" y="144" width="88" height="222" rx="11" ry="11" fill="#1a1a1f"/>
+  <rect x="320" y="144" width="88" height="222" rx="11" ry="11" fill="url(#col-shimmer)"/>
+  <!-- Header bar -->
+  <rect x="334" y="158" width="60" height="5" rx="2.5" ry="2.5" fill="#2e2e36"/>
+
+  <!-- Drop zone indicator (dashed outline to suggest something landing) -->
+  <rect x="328" y="175" width="72" height="50" rx="7" ry="7" fill="none"
+        stroke="rgba(200,255,71,0.3)" stroke-width="1.5" stroke-dasharray="5,3"/>
+
+  <!-- Card B — small lime -->
+  <rect x="328" y="236" width="72" height="42" rx="7" ry="7" fill="#c8ff47" filter="url(#lime-glow)"/>
+  <rect x="336" y="247" width="40" height="4" rx="2" ry="2" fill="rgba(0,0,0,0.22)"/>
+  <rect x="336" y="257" width="28" height="4" rx="2" ry="2" fill="rgba(0,0,0,0.12)"/>
+
+  <!-- Card C — muted -->
+  <rect x="328" y="288" width="72" height="68" rx="7" ry="7" fill="#242429"/>
+
+
+  <!-- Cursor dot on middle column drag card -->
+  <circle cx="270" cy="225" r="8" fill="#c8ff47" fill-opacity="0.95"/>
+  <circle cx="270" cy="225" r="13" fill="#c8ff47" fill-opacity="0.12"/>
 </svg>
