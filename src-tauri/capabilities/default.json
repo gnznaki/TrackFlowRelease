@@ -13,8 +13,6 @@
     "dialog:allow-open",
     "opener:default",
     "opener:allow-open-path",
-    "updater:allow-check",
-    "updater:allow-download-and-install",
     {
       "identifier": "fs:scope",
       "allow": [{ "path": "**" }]

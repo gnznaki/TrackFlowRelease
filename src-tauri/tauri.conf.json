@@ -17,20 +17,13 @@
         "minWidth": 900,
         "minHeight": 600,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "decorations": true,
+        "dragDropEnabled": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; media-src 'self' asset: https://asset.localhost; connect-src ipc: http://ipc.localhost https://discord.com https://fonts.googleapis.com https://fonts.gstatic.com https://github.com https://objects.githubusercontent.com https://*.supabase.co wss://*.supabase.co"
-    }
-  },
-  "plugins": {
-    "updater": {
-      "endpoints": [
-        "https://github.com/gnznaki/TrackingMyFlowDog/releases/latest/download/latest.json"
-      ],
-      "dialog": false,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDkyNzg0QUFEN0Q1QzVEQkQKUldTOVhWeDlyVXA0a3FyZGtqYWUvN0c1NDB0d05rRUJTTDNlU3cxOFYrbG90ZXNuOWxmN3hkbTMK"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' asset: https://asset.localhost; connect-src ipc: http://ipc.localhost https://discord.com https://fonts.googleapis.com https://fonts.gstatic.com https://github.com https://objects.githubusercontent.com https://*.supabase.co wss://*.supabase.co"
     }
   },
   "bundle": {
@@ -45,7 +38,6 @@
     ],
     "shortDescription": "Music project organizer for producers and engineers",
     "longDescription": "TrackFlow automatically finds your FL Studio, Ableton, and Pro Tools projects and lets you organize them your way.",
-    "createUpdaterArtifacts": true,
     "windows": {
       "nsis": {
         "installMode": "currentUser"

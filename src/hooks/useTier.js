@@ -5,7 +5,9 @@ export function useTier(userId) {
   const [tier, setTier] = useState("free");
   const [displayName, setDisplayName] = useState("");
   const [avatarColor, setAvatarColor] = useState("lime");
+  const [avatarUrl, setAvatarUrl] = useState(null);
   const [createdAt, setCreatedAt] = useState(null);
+  const [invitesDisabled, setInvitesDisabled] = useState(false);
 
   useEffect(() => {
     if (!userId || !supabase) return;
@@ -14,16 +16,17 @@ export function useTier(userId) {
       if (row?.tier) setTier(row.tier);
       if (row?.display_name) setDisplayName(row.display_name);
       setAvatarColor(row?.avatar_color ?? "lime");
+      setAvatarUrl(row?.avatar_url ?? null);
       setCreatedAt(row?.created_at ?? null);
+      setInvitesDisabled(row?.invites_disabled ?? false);
     }
 
     supabase
       .from("profiles")
-      .select("tier, display_name, avatar_color, created_at")
+      .select("*")
       .eq("id", userId)
       .single()
       .then(({ data, error }) => {
-        console.log("[useTier] fetch →", { userId, data, error });
         if (data) applyProfile(data);
       });
 
@@ -52,15 +55,31 @@ export function useTier(userId) {
     await supabase.from("profiles").update({ avatar_color: colorKey }).eq("id", userId);
   }
 
+  async function updateAvatarUrl(url) {
+    if (!userId || !supabase) return;
+    setAvatarUrl(url);
+    await supabase.from("profiles").update({ avatar_url: url }).eq("id", userId);
+  }
+
+  async function updateInvitesDisabled(val) {
+    if (!userId || !supabase) return;
+    setInvitesDisabled(val);
+    await supabase.from("profiles").update({ invites_disabled: val }).eq("id", userId);
+  }
+
   return {
     tier,
     displayName,
     avatarColor,
+    avatarUrl,
     createdAt,
+    invitesDisabled,
     updateDisplayName,
     updateAvatarColor,
+    updateAvatarUrl,
+    updateInvitesDisabled,
     isFree: tier === "free",
-    isPremium: tier === "premium" || tier === "pro",
-    isPaid: tier === "premium" || tier === "pro",
+    isPremium: tier === "premium",
+    isPaid: tier === "premium" || tier === "ongoing",
   };
 }

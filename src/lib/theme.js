@@ -108,9 +108,7 @@ export function buildTheme(bg, cardBg, borderHex, accent, font) {
 
 export const BASE_PRESETS = {
   default: { name: "Default", bg: "#0a0a0b", cardBg: "#18181d", borderHex: "#ffffff", accent: "#c8ff47" },
-  daves:   { name: "Dave's",  bg: "#15120a", cardBg: "#252015", borderHex: "#aa9137", accent: "#52b23e" },
-  tabkiller: { name: "TabKiller", bg: "#f4f4fc", cardBg: "#eeeeff", borderHex: "#5037c8", accent: "#e8197e" },
-  findanote: { name: "FindANote", bg: "#060d1c", cardBg: "#0d1c32", borderHex: "#00afd2", accent: "#00b8d4" },
+  tabkiller: { name: "Light", bg: "#7eafaf", cardBg: "#dff2f2", borderHex: "#4e8888", accent: "#1a5e6e" },
 };
 
 // Keep options few but visually distinct (display / grotesk / serif / mono)

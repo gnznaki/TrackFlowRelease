@@ -50,16 +50,60 @@ fn backup_app_state(app: tauri::AppHandle) -> Result<String, String> {
     Ok(backup.to_string_lossy().to_string())
 }
 
+#[tauri::command]
+fn get_save_folder(app: tauri::AppHandle) -> Result<String, String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+    Ok(data_dir.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn open_save_folder(app: tauri::AppHandle) -> Result<(), String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+    let path = data_dir.to_string_lossy().to_string();
+    #[cfg(target_os = "windows")]
+    { Command::new("explorer").arg(&path).spawn().map_err(|e| e.to_string())?; }
+    #[cfg(target_os = "macos")]
+    { Command::new("open").arg(&path).spawn().map_err(|e| e.to_string())?; }
+    #[cfg(target_os = "linux")]
+    { Command::new("xdg-open").arg(&path).spawn().map_err(|e| e.to_string())?; }
+    Ok(())
+}
+
+#[tauri::command]
+fn read_file_text(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn open_project_folder(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    let dir = if p.is_dir() { p.to_path_buf() } else { p.parent().map(|d| d.to_path_buf()).unwrap_or_default() };
+    let dir_str = dir.to_string_lossy().to_string();
+    #[cfg(target_os = "windows")]
+    { Command::new("explorer").arg(&dir_str).spawn().map_err(|e| e.to_string())?; }
+    #[cfg(target_os = "macos")]
+    { Command::new("open").arg(&dir_str).spawn().map_err(|e| e.to_string())?; }
+    #[cfg(target_os = "linux")]
+    { Command::new("xdg-open").arg(&dir_str).spawn().map_err(|e| e.to_string())?; }
+    Ok(())
+}
+
+#[tauri::command]
+fn restart_app(app: tauri::AppHandle) {
+    app.restart();
+}
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             open_daw_file, get_file_modified,
-            save_app_state, load_app_state, backup_app_state,
+            save_app_state, load_app_state, backup_app_state, get_save_folder, open_save_folder, read_file_text,
+            open_project_folder, restart_app,
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri application");

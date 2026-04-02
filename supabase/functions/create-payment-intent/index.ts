@@ -75,8 +75,8 @@ Deno.serve(async (req) => {
         amount: 1500, // $15.00 in cents
         currency: "usd",
         customer: customerId,
-        metadata: { supabase_user_id: userId, price_id: priceId },
-        automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+        metadata: { supabase_user_id: userId, price_id: priceId, tier: "premium" },
+        payment_method_types: ["card"],
       });
 
       return new Response(

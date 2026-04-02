@@ -48,7 +48,6 @@ export function migrateState(saved) {
     themeCustom: saved.themeCustom || BASE_PRESETS[themePreset] || BASE_PRESETS.default,
     font: saved.font || "Syne",
     colMaxHeight: saved.colMaxHeight || DEFAULT_COL_HEIGHT,
-    discordWebhook: saved.discordWebhook || "",
     collapsedCols: saved.collapsedCols || [],
     lockedCols: saved.lockedCols || [],
     sharedBoards: saved.sharedBoards || [],

@@ -1,4 +1,16 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { supabase } from "../lib/supabase";
+
+async function openLink(url) {
+  try {
+    if (window.__TAURI_INTERNALS__) {
+      const { openUrl } = await import("@tauri-apps/plugin-opener");
+      await openUrl(url);
+    } else {
+      window.open(url, "_blank", "noopener");
+    }
+  } catch { window.open(url, "_blank", "noopener"); }
+}
 
 export const AVATAR_GRADIENTS = [
   { key: "lime",   a: "#c8ff47", b: "#3af0b0" },
@@ -56,11 +68,15 @@ export default function ProfileModal({
   tier,
   displayName,
   avatarColor,
+  avatarUrl,
   createdAt,
+  invitesDisabled,
   isPaid,
   isPremium,
   onUpdateDisplayName,
   onUpdateAvatarColor,
+  onUpdateAvatarUrl,
+  onUpdateInvitesDisabled,
   onResetPassword,
   onDeleteAccount,
   onUpgrade,
@@ -76,6 +92,9 @@ export default function ProfileModal({
   // Profile tab state
   const [nameDraft, setNameDraft] = useState(displayName || "");
   const [nameSaving, setNameSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Security tab state
   const [resetSent, setResetSent] = useState(false);
@@ -85,6 +104,23 @@ export default function ProfileModal({
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const grad = AVATAR_GRADIENTS.find(g => g.key === (avatarColor || "lime")) || AVATAR_GRADIENTS[0];
+
+  async function handleAvatarUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file || !user || !supabase) return;
+    if (file.size > 5 * 1024 * 1024) { setUploadError("Image must be under 5 MB"); return; }
+    setUploadingAvatar(true);
+    setUploadError(null);
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/avatar.${ext}`;
+    const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    if (upErr) { setUploadError(upErr.message); setUploadingAvatar(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+    // Bust cache by appending a timestamp
+    await onUpdateAvatarUrl(`${publicUrl}?t=${Date.now()}`);
+    setUploadingAvatar(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
   const avatarLetter = displayName ? displayName[0].toUpperCase() : (user?.email?.[0]?.toUpperCase() ?? "?");
 
   const tierPlan = isPremium ? PLANS_INFO.premium : PLANS_INFO.free;
@@ -167,23 +203,32 @@ export default function ProfileModal({
           </button>
 
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-            {/* Avatar circle */}
-            <div style={{
-              width: 72,
-              height: 72,
-              borderRadius: "50%",
-              background: `linear-gradient(135deg, ${grad.a}, ${grad.b})`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 28,
-              fontWeight: 800,
-              color: "#0a0a0a",
-              flexShrink: 0,
-              boxShadow: `0 0 0 3px ${C.surface}, 0 0 0 4px ${grad.a}55`,
-            }}>
-              {avatarLetter}
+            {/* Avatar circle — click to upload */}
+            <div
+              title="Click to upload photo"
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                width: 72, height: 72, borderRadius: "50%", flexShrink: 0, position: "relative",
+                cursor: "pointer", boxShadow: `0 0 0 3px ${C.surface}, 0 0 0 4px ${grad.a}55`,
+              }}
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", display: "block" }} />
+              ) : (
+                <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: `linear-gradient(135deg, ${grad.a}, ${grad.b})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 800, color: "#0a0a0a" }}>
+                  {avatarLetter}
+                </div>
+              )}
+              {/* Upload overlay */}
+              <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", opacity: uploadingAvatar ? 1 : 0, transition: "opacity 0.15s" }}
+                onMouseEnter={e => { if (!uploadingAvatar) e.currentTarget.style.opacity = "1"; }}
+                onMouseLeave={e => { if (!uploadingAvatar) e.currentTarget.style.opacity = "0"; }}>
+                <span style={{ fontSize: 11, color: "#fff", fontWeight: 700, textAlign: "center", lineHeight: 1.3 }}>
+                  {uploadingAvatar ? "…" : "Upload"}
+                </span>
+              </div>
             </div>
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={handleAvatarUpload} />
 
             <div style={{ flex: 1, minWidth: 0 }}>
               {/* Display name */}
@@ -297,10 +342,31 @@ export default function ProfileModal({
                 </div>
               </div>
 
+              {/* Profile Photo */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.text3, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
+                  Profile Photo
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <button onClick={() => fileInputRef.current?.click()} disabled={uploadingAvatar}
+                    style={{ padding: "7px 14px", background: C.surface2, border: `1px solid ${C.border2}`, borderRadius: C.r, color: C.text, fontFamily: font, fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: uploadingAvatar ? 0.6 : 1 }}>
+                    {uploadingAvatar ? "Uploading…" : "Upload Photo"}
+                  </button>
+                  {avatarUrl && (
+                    <button onClick={() => onUpdateAvatarUrl(null)}
+                      style={{ padding: "7px 14px", background: "transparent", border: `1px solid #ff505040`, borderRadius: C.r, color: "#ff5050", fontFamily: font, fontSize: 12, cursor: "pointer" }}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {uploadError && <div style={{ fontSize: 11, color: "#ff5050", marginTop: 6 }}>{uploadError}</div>}
+                <div style={{ fontSize: 11, color: C.text3, marginTop: 6 }}>JPG, PNG, WEBP or GIF · Max 5 MB</div>
+              </div>
+
               {/* Avatar Color */}
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.text3, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>
-                  Avatar Color
+                  Avatar Color {avatarUrl && <span style={{ fontWeight: 400, textTransform: "none", fontSize: 10 }}>(used when no photo)</span>}
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
                   {AVATAR_GRADIENTS.map(g => {
@@ -455,6 +521,26 @@ export default function ProfileModal({
           {activeTab === "security" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
+              {/* Board Invitations toggle */}
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>Board Invitations</div>
+                <div style={{ fontSize: 12, color: C.text3, marginBottom: 12, lineHeight: 1.5 }}>
+                  When disabled, no one can send you board invite requests. You can still join boards using a code.
+                </div>
+                <button
+                  onClick={() => onUpdateInvitesDisabled(!invitesDisabled)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: C.surface2, border: `1px solid ${invitesDisabled ? "rgba(255,80,80,0.4)" : C.border}`, borderRadius: C.r, color: invitesDisabled ? "#ff5050" : C.text, fontFamily: font, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                >
+                  {/* Toggle pill */}
+                  <div style={{ width: 34, height: 18, borderRadius: 9, background: invitesDisabled ? "rgba(255,80,80,0.6)" : C.accent, position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+                    <div style={{ position: "absolute", top: 2, left: invitesDisabled ? 2 : 16, width: 14, height: 14, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+                  </div>
+                  {invitesDisabled ? "Invitations disabled" : "Invitations enabled"}
+                </button>
+              </div>
+
+              <div style={{ height: 1, background: C.border }} />
+
               {/* Change Password */}
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>
@@ -595,6 +681,25 @@ export default function ProfileModal({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Footer links */}
+        <div style={{ padding: "14px 28px 20px", borderTop: `1px solid ${C.border}`, display: "flex", gap: 16, alignItems: "center", marginTop: 24 }}>
+          <button onClick={() => openLink("https://gnznaki.github.io/TrackingMyFlowDog/privacy.html")}
+            style={{ background: "none", border: "none", padding: 0, color: C.text3, fontFamily: font, fontSize: 11, cursor: "pointer" }}
+            onMouseEnter={e => e.currentTarget.style.color = C.text2}
+            onMouseLeave={e => e.currentTarget.style.color = C.text3}>
+            Privacy Policy
+          </button>
+          <span style={{ color: C.border2, fontSize: 11 }}>·</span>
+          <button onClick={() => openLink("https://github.com/gnznaki/TrackingMyFlowDog")}
+            style={{ background: "none", border: "none", padding: 0, color: C.text3, fontFamily: font, fontSize: 11, cursor: "pointer" }}
+            onMouseEnter={e => e.currentTarget.style.color = C.text2}
+            onMouseLeave={e => e.currentTarget.style.color = C.text3}>
+            GitHub
+          </button>
+          <span style={{ flex: 1 }} />
+          <span style={{ fontSize: 11, color: C.text3 }}>TrackFlow v1.2.0</span>
         </div>
       </div>
     </div>

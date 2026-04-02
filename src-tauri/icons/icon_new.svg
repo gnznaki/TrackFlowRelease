@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+
+  <!-- Background -->
+  <rect width="512" height="512" fill="#0a0a0b"/>
+
+  <!-- Subtle inner vignette for depth -->
+  <radialGradient id="vignette" cx="50%" cy="45%" r="62%">
+    <stop offset="0%" stop-color="#161618" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
+  </radialGradient>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+
+  <!--
+    Three kanban columns, center-anchored.
+    Column width: 80px, gap: 22px
+    Total width: 3×80 + 2×22 = 284px → starts at x=114
+    Column heights staggered to create rhythm / flow feel.
+    Cards are rounded rects inside each column track.
+  -->
+
+  <!-- === LEFT COLUMN === -->
+  <!-- Column track (dim) -->
+  <rect x="114" y="148" width="80" height="216" rx="10" ry="10" fill="#1a1a1e"/>
+
+  <!-- Card 1 — tall, lime -->
+  <rect x="122" y="158" width="64" height="80" rx="7" ry="7" fill="#c8ff47"/>
+  <!-- Card 2 — short, muted -->
+  <rect x="122" y="250" width="64" height="44" rx="7" ry="7" fill="#2e2e34"/>
+  <!-- Card 3 — medium, muted -->
+  <rect x="122" y="306" width="64" height="50" rx="7" ry="7" fill="#252528"/>
+
+
+  <!-- === MIDDLE COLUMN === -->
+  <!-- Column track (dim) -->
+  <rect x="216" y="120" width="80" height="272" rx="10" ry="10" fill="#1a1a1e"/>
+
+  <!-- Card 1 — short, muted -->
+  <rect x="224" y="130" width="64" height="44" rx="7" ry="7" fill="#252528"/>
+  <!-- Card 2 — tall, lime (primary card, middle col) -->
+  <rect x="224" y="186" width="64" height="100" rx="7" ry="7" fill="#c8ff47"/>
+  <!-- Card 3 — medium, muted -->
+  <rect x="224" y="298" width="64" height="86" rx="7" ry="7" fill="#2e2e34"/>
+
+
+  <!-- === RIGHT COLUMN === -->
+  <!-- Column track (dim) -->
+  <rect x="318" y="148" width="80" height="216" rx="10" ry="10" fill="#1a1a1e"/>
+
+  <!-- Card 1 — medium, muted -->
+  <rect x="326" y="158" width="64" height="56" rx="7" ry="7" fill="#2e2e34"/>
+  <!-- Card 2 — short, lime accent -->
+  <rect x="326" y="226" width="64" height="44" rx="7" ry="7" fill="#c8ff47"/>
+  <!-- Card 3 — medium, muted -->
+  <rect x="326" y="282" width="64" height="74" rx="7" ry="7" fill="#252528"/>
+
+  <!--
+    Lime accent shine on the primary lime cards — a subtle 40% white gloss
+    at the top edge to give the cards a polished, slightly raised feel.
+  -->
+  <rect x="122" y="158" width="64" height="18" rx="7" ry="7" fill="#ffffff" fill-opacity="0.12"/>
+  <rect x="224" y="186" width="64" height="20" rx="7" ry="7" fill="#ffffff" fill-opacity="0.12"/>
+  <rect x="326" y="226" width="64" height="14" rx="7" ry="7" fill="#ffffff" fill-opacity="0.12"/>
+
+</svg>

@@ -1,5 +1,5 @@
 import { Component } from "react";
-import { postToDiscord, getWebhookUrl } from "./lib/discord";
+import { postToDiscord } from "./lib/discord";
 
 const APP_VERSION = "1.2.0";
 
@@ -17,13 +17,10 @@ export class ErrorBoundary extends Component {
   componentDidCatch(error, info) {
     this._componentStack = info?.componentStack || "";
     console.error("TrackFlow crash:", error, info);
-    // Auto-send immediately if webhook is configured
     this._autoSend(error, this._componentStack);
   }
 
   async _autoSend(error, componentStack) {
-    const webhookUrl = getWebhookUrl();
-    if (!webhookUrl) return;
     const body = [
       `**Version:** ${APP_VERSION}`,
       `**Error:** ${error?.message || "Unknown"}`,
@@ -31,19 +28,11 @@ export class ErrorBoundary extends Component {
       `**Component Tree:**\`\`\`\n${(componentStack || "").substring(0, 500)}\n\`\`\``,
       `**Time:** ${new Date().toLocaleString()}`,
     ].join("\n");
-    const ok = await postToDiscord(webhookUrl, "🔴 TrackFlow Crash (Auto-Report)", body, 0xff2222);
+    const ok = await postToDiscord("🔴 TrackFlow Crash (Auto-Report)", body, 0xff2222);
     if (ok) this.setState({ autoSent: true });
   }
 
   async sendError() {
-    const webhookUrl = getWebhookUrl();
-    if (!webhookUrl) {
-      // Fallback: copy to clipboard
-      const text = `TrackFlow v${APP_VERSION} Crash\n${this.state.error?.message}\n${this.state.error?.stack || ""}\n${this._componentStack}`;
-      try { await navigator.clipboard.writeText(text); alert("No webhook configured — error details copied to clipboard."); }
-      catch { alert("No Discord webhook configured. Add one in Settings (⚙) to enable reporting."); }
-      return;
-    }
     this.setState({ sending: true });
     const body = [
       `**Version:** ${APP_VERSION}`,
@@ -52,9 +41,9 @@ export class ErrorBoundary extends Component {
       `**Component Tree:**\`\`\`\n${(this._componentStack || "").substring(0, 500)}\n\`\`\``,
       `**Time:** ${new Date().toLocaleString()}`,
     ].join("\n");
-    const ok = await postToDiscord(webhookUrl, "🔴 TrackFlow Crash (Manual Report)", body, 0xff2222);
+    const ok = await postToDiscord("🔴 TrackFlow Crash (Manual Report)", body, 0xff2222);
     this.setState({ sending: false, sent: ok });
-    if (!ok) alert("Send failed. Check your webhook URL in Settings.");
+    if (!ok) alert("Send failed.");
   }
 
   render() {

@@ -58,11 +58,12 @@ Deno.serve(async (req) => {
     case "payment_intent.succeeded": {
       const pi = event.data.object as Stripe.PaymentIntent;
       const userId = pi.metadata?.supabase_user_id;
-      const priceId = pi.metadata?.price_id;
-      if (userId && priceId) {
-        await setTierByUserId(userId, tierFromPriceId(priceId));
+      // Prefer the tier baked directly into metadata — no price ID mapping needed
+      const tier = pi.metadata?.tier ?? tierFromPriceId(pi.metadata?.price_id ?? "");
+      if (userId) {
+        await setTierByUserId(userId, tier);
       } else if (pi.customer) {
-        await setTierByCustomer(pi.customer as string, tierFromPriceId(priceId ?? ""));
+        await setTierByCustomer(pi.customer as string, tier);
       }
       break;
     }

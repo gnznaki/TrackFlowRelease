@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Icon, Icons } from "./Icon";
 
-export default function SortFilterDropdown({ sortBy, setSortBy, sortDir, setSortDir, allTags, activeTagFilters, setActiveTagFilters, theme }) {
+export default function SortFilterDropdown({ sortBy, setSortBy, sortDir, setSortDir, allTags, activeTagFilters, setActiveTagFilters, projects, activeProjectFilters, setActiveProjectFilters, theme }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -10,8 +10,9 @@ export default function SortFilterDropdown({ sortBy, setSortBy, sortDir, setSort
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  const activeCount = activeTagFilters.length;
+  const activeCount = activeTagFilters.length + (activeProjectFilters?.length ?? 0);
   const sortLabels = { modified: "File Modified", default: "Default Order" };
+  const projectsWithSongs = (projects || []).filter(p => p.songs?.length > 0);
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -72,7 +73,39 @@ export default function SortFilterDropdown({ sortBy, setSortBy, sortDir, setSort
                   style={{ padding: "7px 10px", borderRadius: theme.r - 2, cursor: "pointer", fontSize: 12, color: theme.text3, marginTop: 2 }}
                   onMouseEnter={e => e.currentTarget.style.background = theme.surface2}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                  Clear all filters
+                  Clear tag filters
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Project filter section */}
+          {projectsWithSongs.length > 0 && (
+            <>
+              <div style={{ height: 1, background: theme.border, margin: "8px 0" }} />
+              <div style={{ fontSize: 10, color: theme.text3, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.08em", padding: "4px 8px 6px" }}>Filter by Project</div>
+              {projectsWithSongs.map(proj => {
+                const active = (activeProjectFilters || []).includes(proj.id);
+                const c = proj.color || theme.accent;
+                return (
+                  <div key={proj.id}
+                    onClick={() => setActiveProjectFilters(prev => active ? prev.filter(id => id !== proj.id) : [...prev, proj.id])}
+                    style={{ padding: "7px 10px", borderRadius: theme.r - 2, cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", gap: 10, background: active ? c + "15" : "transparent" }}
+                    onMouseEnter={e => e.currentTarget.style.background = active ? c + "15" : theme.surface2}
+                    onMouseLeave={e => e.currentTarget.style.background = active ? c + "15" : "transparent"}>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: c, flexShrink: 0 }} />
+                    <span style={{ flex: 1, color: active ? c : theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{proj.title}</span>
+                    <span style={{ fontSize: 10, color: theme.text3, flexShrink: 0 }}>{proj.songs.length}</span>
+                    {active && <span style={{ fontSize: 11, color: c, flexShrink: 0 }}>✓</span>}
+                  </div>
+                );
+              })}
+              {(activeProjectFilters?.length > 0) && (
+                <div onClick={() => setActiveProjectFilters([])}
+                  style={{ padding: "7px 10px", borderRadius: theme.r - 2, cursor: "pointer", fontSize: 12, color: theme.text3, marginTop: 2 }}
+                  onMouseEnter={e => e.currentTarget.style.background = theme.surface2}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  Clear project filters
                 </div>
               )}
             </>
