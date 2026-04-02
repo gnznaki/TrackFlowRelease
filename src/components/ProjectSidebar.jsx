@@ -230,13 +230,17 @@ export function DroppableProject({ proj, isExpanded, onToggle, onDelete, onRenam
   const handleSongDropRef = useRef(null);
   handleSongDropRef.current = () => onReorderSongs(proj.id, localSongs);
 
-  // Listen for when any song drag ends to commit the order
+  // Separate ref for the song list area so the "song-list" drop target never
+  // shares an element with the "project" drop target. If both targets live on
+  // dropRef at once, the last-registered one's getData wins and board-card
+  // drops stop reporting type:"project", breaking the add-to-project flow.
+  const songListRef = useRef(null);
+
   useEffect(() => {
     if (!isExpanded) return;
-    const el = dropRef.current;
+    const el = songListRef.current;
     if (!el) return;
 
-    // We use a drop target on the whole project body to catch song drops
     return dropTargetForElements({
       element: el,
       getData: () => ({ type: "song-list", projId: proj.id }),
@@ -316,7 +320,7 @@ export function DroppableProject({ proj, isExpanded, onToggle, onDelete, onRenam
         <Icon d={isExpanded ? Icons.chevronUp : Icons.chevronDown} size={10} style={{ color: theme.text3 }} />
       </div>
       {isExpanded && (
-        <div style={{ borderTop: `1px solid ${theme.border}` }}>
+        <div ref={songListRef} style={{ borderTop: `1px solid ${theme.border}` }}>
           {localSongs.map(songId => {
             const allCards = getAllCards();
             const card = allCards.find(c => c.id === songId);
