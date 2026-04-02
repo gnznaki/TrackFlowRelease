@@ -27,7 +27,7 @@ const PLANS_INFO = {
     color: null,
     features: [
       "Unlimited local boards",
-      "FL Studio, Ableton & Pro Tools scanning",
+      "FL Studio, Ableton, Pro Tools, Reaper & Logic Pro scanning",
       "Kanban with tags, notes & filters",
       "Cloud backup across devices",
       "Join shared boards",
@@ -692,14 +692,14 @@ export default function ProfileModal({
             Privacy Policy
           </button>
           <span style={{ color: C.border2, fontSize: 11 }}>·</span>
-          <button onClick={() => openLink("https://github.com/gnznaki/TrackingMyFlowDog")}
+          <button onClick={() => openLink("https://github.com/gnznaki/TrackFlowRelease")}
             style={{ background: "none", border: "none", padding: 0, color: C.text3, fontFamily: font, fontSize: 11, cursor: "pointer" }}
             onMouseEnter={e => e.currentTarget.style.color = C.text2}
             onMouseLeave={e => e.currentTarget.style.color = C.text3}>
             GitHub
           </button>
           <span style={{ flex: 1 }} />
-          <span style={{ fontSize: 11, color: C.text3 }}>TrackFlow v1.2.0</span>
+          <span style={{ fontSize: 11, color: C.text3 }}>TrackFlow v1.2.1</span>
         </div>
       </div>
     </div>

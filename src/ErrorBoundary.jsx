@@ -1,7 +1,7 @@
 import { Component } from "react";
 import { postToDiscord } from "./lib/discord";
 
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.2.1";
 
 export class ErrorBoundary extends Component {
   constructor(props) {

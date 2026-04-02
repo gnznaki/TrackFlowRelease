@@ -1,6 +1,6 @@
 {
   "productName": "TrackFlow",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "identifier": "com.trackflow.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -37,7 +37,7 @@
       "icons/icon.ico"
     ],
     "shortDescription": "Music project organizer for producers and engineers",
-    "longDescription": "TrackFlow automatically finds your FL Studio, Ableton, and Pro Tools projects and lets you organize them your way.",
+    "longDescription": "TrackFlow automatically finds your FL Studio, Ableton, Pro Tools, Reaper, and Logic Pro projects and lets you organize them your way.",
     "windows": {
       "nsis": {
         "installMode": "currentUser"

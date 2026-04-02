@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Icon, Icons } from "./Icon";
 import Tag from "./Tag";
-import { DAW_COLORS, DAW_LABELS } from "../lib/constants";
+import { DAW_COLORS, DAW_LABELS, DAW_NAMES } from "../lib/constants";
 
 export default function DetailPanel({ card, onUpdateNote, onUpdateTags, onOpenInDaw, allTags, theme, isViewer }) {
   const [showTagPicker, setShowTagPicker] = useState(false);
@@ -17,7 +17,7 @@ export default function DetailPanel({ card, onUpdateNote, onUpdateTags, onOpenIn
   return (
     <div style={{ width: 275, flexShrink: 0, borderLeft: `1px solid ${theme.border}`, background: theme.surface, display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "14px 14px 12px", borderBottom: `1px solid ${theme.border}` }}>
-        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: dawColor + "22", color: dawColor, display: "inline-block", marginBottom: 8 }}>{card.daw === "fl" ? "FL Studio" : card.daw === "ab" ? "Ableton Live" : "Pro Tools"}</span>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: dawColor + "22", color: dawColor, display: "inline-block", marginBottom: 8 }}>{DAW_NAMES[card.daw] || "Unknown DAW"}</span>
         <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4, color: theme.text }}>{card.title}</div>
         <div style={{ fontFamily: "monospace", fontSize: 9, color: theme.text3, wordBreak: "break-all", lineHeight: 1.5 }}>{card.path}</div>
       </div>
@@ -55,7 +55,7 @@ export default function DetailPanel({ card, onUpdateNote, onUpdateTags, onOpenIn
         )}
       </div>
       <button onClick={() => onOpenInDaw(card.path)} style={{ margin: "0 14px 14px", padding: 10, background: theme.accent, border: "none", borderRadius: theme.r, color: theme.accentText, fontFamily: "Syne", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
-        <Icon d={Icons.open} size={13} />Open in {card.daw === "fl" ? "FL Studio" : card.daw === "ab" ? "Ableton" : "Pro Tools"}
+        <Icon d={Icons.open} size={13} />Open in {DAW_NAMES[card.daw] || "DAW"}
       </button>
     </div>
   );
