@@ -31,6 +31,7 @@ import KeyboardShortcuts from "./components/KeyboardShortcuts";
 import NamePromptModal from "./components/NamePromptModal";
 import ContactModal from "./components/ContactModal";
 import { deleteAccount, openCustomerPortal } from "./lib/stripe";
+import TutorialModal from "./components/TutorialModal";
 import "./App.css";
 
 function hexToRgbInline(hex) {
@@ -284,6 +285,7 @@ function App() {
   const [isCardDrag, setIsCardDrag] = useState(false);
   const [crossPageDrop, setCrossPageDrop] = useState(null); // { type, itemName, fromPageId, fromPageName, toPageId, toPageName, cardId?, card?, colId?, col? }
   const [showTagManager, setShowTagManager] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [showThemeCustomizer, setShowThemeCustomizer] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -381,7 +383,7 @@ function App() {
 
     function loop() {
       const { x, y } = cardDragPointer.current;
-      // Find innermost scrollable element under the pointer
+      // Vertical: scroll innermost scrollable column under the pointer
       const hit = document.elementFromPoint(x, y);
       let el = hit;
       while (el && el !== document.body) {
@@ -389,17 +391,26 @@ function App() {
         const oy = style.overflowY;
         if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight) {
           const rect = el.getBoundingClientRect();
-          const ZONE = 56; // px from edge where scrolling activates
+          const ZONE = 56;
           if (y < rect.top + ZONE) {
-            const speed = Math.round(8 * (1 - (y - rect.top) / ZONE));
-            el.scrollTop -= speed;
+            el.scrollTop -= Math.round(8 * (1 - (y - rect.top) / ZONE));
           } else if (y > rect.bottom - ZONE) {
-            const speed = Math.round(8 * (1 - (rect.bottom - y) / ZONE));
-            el.scrollTop += speed;
+            el.scrollTop += Math.round(8 * (1 - (rect.bottom - y) / ZONE));
           }
           break;
         }
         el = el.parentElement;
+      }
+      // Horizontal: scroll board when pointer is near left/right edge
+      const board = document.querySelector("[data-board-scroll]");
+      if (board) {
+        const br = board.getBoundingClientRect();
+        const HZONE = 80;
+        if (x > br.right - HZONE) {
+          board.scrollLeft += Math.round(10 * (1 - Math.max(0, br.right - x) / HZONE));
+        } else if (x < br.left + HZONE) {
+          board.scrollLeft -= Math.round(10 * (1 - Math.max(0, x - br.left) / HZONE));
+        }
       }
       cardScrollRaf.current = requestAnimationFrame(loop);
     }
@@ -746,6 +757,10 @@ function App() {
       loadState().then(raw => {
         applyLoadedState(migrateState(raw));
         setReady(true);
+        const tutorialKey = `tf_tutorial_seen_${user.id}`;
+        if (!localStorage.getItem(tutorialKey)) {
+          setShowTutorial(true);
+        }
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -797,7 +812,7 @@ function App() {
     const frame = requestAnimationFrame(() => {
       const el = document.querySelector(`[data-card-id="${id}"]`);
       if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
         pendingScrollCardId.current = null;
       }
     });
@@ -1447,9 +1462,16 @@ function App() {
     if (!targetPage) return;
     const card = targetPage.columns.flatMap(c => c.cards).find(c => c.id === cardId);
     if (!card) return;
-    pendingScrollCardId.current = cardId;
     setSelectedCard(card);
-    setCurrentPageId(targetPage.id);
+    if (targetPage.id !== currentPageId) {
+      pendingScrollCardId.current = cardId;
+      setCurrentPageId(targetPage.id);
+    } else {
+      requestAnimationFrame(() => {
+        const el = document.querySelector(`[data-card-id="${cardId}"]`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      });
+    }
   }
   function handleUpdateNote(cardId, note) { if (isEffectiveViewer) return; setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.map(c => c.id === cardId ? { ...c, note } : c) }))); setSelectedCard(prev => prev?.id === cardId ? { ...prev, note } : prev); }
   function handleUpdateTags(cardId, tags) { if (isEffectiveViewer) return; setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.map(c => c.id === cardId ? { ...c, tags } : c) }))); setSelectedCard(prev => prev?.id === cardId ? { ...prev, tags } : prev); }
@@ -1638,6 +1660,7 @@ function App() {
         />
       )}
       {showThemeCustomizer && <ThemeCustomizer themeCustom={themeCustom} font={font} onApply={(preset, custom, f) => { setThemePreset(preset); setThemeCustom(custom); setFont(f); setShowThemeCustomizer(false); }} onClose={() => setShowThemeCustomizer(false)} theme={theme} />}
+      {showTutorial && <TutorialModal onClose={() => { localStorage.setItem(`tf_tutorial_seen_${user.id}`, "1"); setShowTutorial(false); }} theme={theme} />}
       {showSettings && <SettingsPanel colMaxHeight={colMaxHeight} onSave={(mh) => { setColMaxHeight(mh); setShowSettings(false); }} onClose={() => setShowSettings(false)} onShowShortcuts={() => { setShowSettings(false); setShowShortcuts(true); }} onShowContact={() => { setShowSettings(false); setShowContact(true); }} theme={theme} />}
       {showContact && <ContactModal onClose={() => setShowContact(false)} theme={theme} />}
       {showShortcuts && <KeyboardShortcuts theme={theme} onClose={() => setShowShortcuts(false)} />}
@@ -1657,7 +1680,7 @@ function App() {
 
         {/* Page tabs */}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <div ref={tabBarRef} style={{ display: "flex", background: theme.surface2, border: `1px solid ${theme.border}`, borderRadius: theme.r, padding: 3, gap: 2, alignItems: "center" }}>
+          <div ref={tabBarRef} data-tutorial="pages" style={{ display: "flex", background: theme.surface2, border: `1px solid ${theme.border}`, borderRadius: theme.r, padding: 3, gap: 2, alignItems: "center" }}>
             {pages.map((page, pageIndex) => (
               <PageDragTab
                 key={page.id}
@@ -1726,6 +1749,7 @@ function App() {
           {user && (
             <button
               onClick={() => isPaid ? setShowShareModal(true) : setShowUpgradeModal(true)}
+              data-tutorial="share"
               title={!isPaid ? "Premium feature — upgrade to share boards" : isCurrentBoardShared ? "Board is shared — manage collaboration" : "Invite / share this board"}
               style={{ position: "relative", width: 28, height: 28, borderRadius: theme.r, border: `1px solid ${isCurrentBoardShared ? theme.accent + "60" : theme.border}`, background: isCurrentBoardShared ? `rgba(${theme.accentRgb},0.1)` : "transparent", color: isCurrentBoardShared ? theme.accent : theme.text3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
               onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.borderColor = theme.accent + "60"; }}

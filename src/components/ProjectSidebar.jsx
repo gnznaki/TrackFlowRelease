@@ -417,7 +417,7 @@ export default function ProjectSidebar({ projects, onAddProject, onDeleteProject
   }, [isSongDrag]);
 
   return (
-    <div style={{ width: collapsed ? 52 : 235, flexShrink: 0, borderRight: `1px solid ${theme.border}`, background: theme.surface, display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.18s" }}>
+    <div data-tutorial="sidebar" style={{ width: collapsed ? 52 : 235, flexShrink: 0, borderRight: `1px solid ${theme.border}`, background: theme.surface, display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.18s" }}>
       <div
         onContextMenu={collapsed ? undefined : e => { e.preventDefault(); setAreaContextMenu({ x: e.clientX, y: e.clientY }); }}
         style={{ padding: collapsed ? "12px 10px" : "13px 14px 10px", borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: collapsed ? "center" : "center", justifyContent: "space-between", gap: 8, flexDirection: collapsed ? "column" : "row" }}>
