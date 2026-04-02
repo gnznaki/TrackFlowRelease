@@ -663,8 +663,11 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // The app's minimum window width is 900px (tauri.conf.json minWidth).
+    // Keep the threshold well below that so snapping to half-screen never
+    // collapses multi-row layouts. Panel mode is only for very narrow contexts.
     function decideView() {
-      const next = window.innerWidth < 1200 ? "panel" : "grid";
+      const next = window.innerWidth < 600 ? "panel" : "grid";
       setLayoutView(prev => (prev === next ? prev : next));
     }
     decideView();
@@ -805,18 +808,54 @@ function App() {
 
   const pendingScrollCardId = useRef(null);
 
-  // Scroll to card after page switch — fires after React commits the new page render
+  // Explicitly scroll both the board (horizontally) and the column (vertically)
+  // to center a card. scrollIntoView is unreliable across nested scroll containers.
+  function scrollToCard(cardId) {
+    const cardEl = document.querySelector(`[data-card-id="${cardId}"]`);
+    if (!cardEl) return false;
+
+    const board = document.querySelector("[data-board-scroll]");
+
+    // Walk up to find the column's scroll container (CardDropZone: fixed height + overflowY auto)
+    let colScroller = null;
+    let el = cardEl.parentElement;
+    while (el && el !== board) {
+      const s = window.getComputedStyle(el);
+      if ((s.overflowY === "auto" || s.overflowY === "scroll") && el.scrollHeight > el.clientHeight) {
+        colScroller = el;
+        break;
+      }
+      el = el.parentElement;
+    }
+
+    // Scroll board horizontally to center the card's column
+    if (board) {
+      const boardRect = board.getBoundingClientRect();
+      const cardRect = cardEl.getBoundingClientRect();
+      const targetLeft = board.scrollLeft + (cardRect.left + cardRect.width / 2) - (boardRect.left + boardRect.width / 2);
+      board.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+    }
+
+    // Scroll column vertically to center the card
+    if (colScroller) {
+      const colRect = colScroller.getBoundingClientRect();
+      const cardRect = cardEl.getBoundingClientRect();
+      const targetTop = colScroller.scrollTop + (cardRect.top + cardRect.height / 2) - (colRect.top + colRect.height / 2);
+      colScroller.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+    }
+
+    return true;
+  }
+
+  // After a page switch, wait for React to commit the new page then scroll.
   useEffect(() => {
     const id = pendingScrollCardId.current;
     if (!id) return;
     const frame = requestAnimationFrame(() => {
-      const el = document.querySelector(`[data-card-id="${id}"]`);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-        pendingScrollCardId.current = null;
-      }
+      if (scrollToCard(id)) pendingScrollCardId.current = null;
     });
     return () => cancelAnimationFrame(frame);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPageId, columns]);
 
   // The handler itself lives in a ref so it always calls the latest functions.
@@ -1467,10 +1506,7 @@ function App() {
       pendingScrollCardId.current = cardId;
       setCurrentPageId(targetPage.id);
     } else {
-      requestAnimationFrame(() => {
-        const el = document.querySelector(`[data-card-id="${cardId}"]`);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-      });
+      requestAnimationFrame(() => scrollToCard(cardId));
     }
   }
   function handleUpdateNote(cardId, note) { if (isEffectiveViewer) return; setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.map(c => c.id === cardId ? { ...c, note } : c) }))); setSelectedCard(prev => prev?.id === cardId ? { ...prev, note } : prev); }
