@@ -37,7 +37,7 @@
       "icons/icon.ico"
     ],
     "shortDescription": "Music project organizer for producers and engineers",
-    "longDescription": "TrackFlow automatically finds your FL Studio, Ableton, Pro Tools, Reaper, and Logic Pro projects and lets you organize them your way.",
+    "longDescription": "TrackFlow automatically finds your FL Studio, Ableton, Pro Tools, and Reaper projects and lets you organize them your way. Mac and Logic Pro support in development.",
     "windows": {
       "nsis": {
         "installMode": "currentUser"

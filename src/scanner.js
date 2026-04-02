@@ -1,10 +1,19 @@
 import { readDir } from "@tauri-apps/plugin-fs";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
-const DAW_EXTENSIONS = [".flp", ".als", ".ptx"];
-const SKIP_FOLDERS = ["backup","backups","samples","samples imported","recorded","exports","bounced files","audio files","video files","ableton project info","cache",".git","node_modules"];
+const DAW_EXTENSIONS = [".flp", ".als", ".ptx", ".ptf", ".rpp"];
+const SKIP_FOLDERS = ["backup","backups","samples","samples imported","recorded","exports","bounced files","audio files","video files","ableton project info","cache",".git","node_modules","reaper_peak_cache","reaper-cache"];
 
-function getDaw(ext) { return ext === ".flp" ? "fl" : ext === ".als" ? "ab" : ext === ".ptx" ? "pt" : null; }
+function getDaw(ext) {
+  switch (ext) {
+    case ".flp":    return "fl";
+    case ".als":    return "ab";
+    case ".ptx":
+    case ".ptf":    return "pt";
+    case ".rpp":    return "rp";
+    default:        return null;
+  }
+}
 
 async function scanDirectory(dirPath, foundFiles = []) {
   try {
@@ -21,6 +30,7 @@ async function scanDirectory(dirPath, foundFiles = []) {
         if (!DAW_EXTENSIONS.includes(ext)) continue;
         if (ext === ".als" && entry.name.includes("[")) continue;
         if (ext === ".flp" && nameLower.includes("autosave")) continue;
+        if (ext === ".rpp" && (nameLower.endsWith(".rpp.bak") || nameLower.includes("-autosave"))) continue;
         if (nameLower.startsWith("~") || nameLower.startsWith(".")) continue;
         const fullPath = dirPath + "\\" + entry.name;
         foundFiles.push({ id: fullPath, title: entry.name.substring(0, entry.name.lastIndexOf(".")), daw: getDaw(ext), path: fullPath, tags: [], note: "", date: "Just found" });

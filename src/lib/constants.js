@@ -12,6 +12,7 @@ export const ENGINEER_COLUMNS = [
   { id: "e-delivered", title: "Delivered", color: "#7aaa30", cards: [] },
 ];
 export const DEFAULT_TAGS = [{ label: "favorite", color: "#7aaa30" }];
-export const DAW_LABELS = { fl: "FLS", ab: "ABL", pt: "PT" };
-export const DAW_COLORS = { fl: "#c07830", ab: "#2ea882", pt: "#5068c0" };
+export const DAW_LABELS = { fl: "FLS", ab: "ABL", pt: "PT", rp: "RPR" };
+export const DAW_COLORS = { fl: "#c07830", ab: "#2ea882", pt: "#5068c0", rp: "#d44a3a" };
+export const DAW_NAMES  = { fl: "FL Studio", ab: "Ableton Live", pt: "Pro Tools", rp: "Reaper" };
 export const DEFAULT_COL_HEIGHT = 500;

@@ -10,7 +10,7 @@ fn open_daw_file(path: String) -> Result<(), String> {
     let p = Path::new(&path);
     if !p.exists() { return Err("File does not exist".to_string()); }
     let ext = p.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()).unwrap_or_default();
-    if !["flp", "als", "ptx"].contains(&ext.as_str()) { return Err("Not a DAW file".to_string()); }
+    if !["flp", "als", "ptx", "ptf", "rpp"].contains(&ext.as_str()) { return Err("Not a DAW file".to_string()); }
     #[cfg(target_os = "windows")]
     { Command::new("cmd").args(["/C", "start", "", &path]).spawn().map_err(|e| e.to_string())?; }
     #[cfg(target_os = "macos")]

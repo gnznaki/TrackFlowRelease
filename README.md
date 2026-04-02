@@ -31,7 +31,7 @@ Windows 10 / 11 · 64-bit · No subscription required
 4. TrackFlow installs and launches automatically
 
 > **Why does Windows warn me?**  
-> TrackFlow is not yet signed with a paid code-signing certificate. This triggers a SmartScreen warning on every install — it does *not* mean the app is unsafe. Every release is scanned with [VirusTotal](https://www.virustotal.com) before publishing. Source code is fully open on GitHub.
+> TrackFlow is not yet signed with a paid code-signing certificate. This triggers a SmartScreen warning on every install — it does *not* mean the app is unsafe. Every release is scanned before publishing — [view the v1.2.1 VirusTotal results](https://www.virustotal.com/gui/file/VIRUSTOTAL_HASH_PLACEHOLDER). Source code is fully open on GitHub.
 
 ---
 
@@ -103,10 +103,10 @@ App state is saved to `%APPDATA%\com.trackflow.app\trackflow-state.json` via the
 Yes. Core features — unlimited local boards, DAW scanning, tags, notes, themes — are free forever. Premium features (real-time collaboration, cloud backup) are coming soon as an optional one-time upgrade.
 
 **Why does Windows show a security warning when I install it?**  
-TrackFlow isn't signed with a paid certificate yet. Windows SmartScreen flags any app without a certificate authority reputation. Click "More info" → "Run anyway". The app is safe — source code is public and every release is VirusTotal-scanned.
+TrackFlow isn't signed with a paid certificate yet. Windows SmartScreen flags any app without a certificate authority reputation. Click "More info" → "Run anyway". The app is safe — source code is public and every release is scanned before publishing. [View the v1.2.1 VirusTotal scan →](https://www.virustotal.com/gui/file/VIRUSTOTAL_HASH_PLACEHOLDER)
 
 **What DAWs are supported?**  
-FL Studio (`.flp`), Ableton Live (`.als`), and Pro Tools (`.ptx`). The scanner finds these automatically when you add a watched folder.
+FL Studio (`.flp`), Ableton Live (`.als`), Pro Tools (`.ptx`/`.ptf`), and Reaper (`.rpp`). Logic Pro and Mac support are in development.
 
 **Where is my data stored?**  
 Locally on your machine at `%APPDATA%\com.trackflow.app\`. Nothing is sent to a server unless you sign in and use cloud features. Automatic backups are created before any major operation.

@@ -27,7 +27,7 @@ const PLANS_INFO = {
     color: null,
     features: [
       "Unlimited local boards",
-      "FL Studio, Ableton, Pro Tools, Reaper & Logic Pro scanning",
+      "FL Studio, Ableton, Pro Tools & Reaper scanning",
       "Kanban with tags, notes & filters",
       "Cloud backup across devices",
       "Join shared boards",
