@@ -31,7 +31,7 @@ Windows 10 / 11 · 64-bit · No subscription required
 4. TrackFlow installs and launches automatically
 
 > **Why does Windows warn me?**  
-> TrackFlow is not yet signed with a paid code-signing certificate. This triggers a SmartScreen warning on every install — it does *not* mean the app is unsafe. Every release is scanned with VirusTotal before publishing. [The v1.2.1 scan](https://www.virustotal.com/gui/file/VIRUSTOTAL_HASH_PLACEHOLDER) shows **68/71 engines clean** — the 3 that flag it are heuristic/ML-only detections with no malware signature match, a known false positive pattern for unsigned Rust apps. Source code is fully open on GitHub.
+> TrackFlow is not yet signed with a paid code-signing certificate. This triggers a SmartScreen warning on every install — it does *not* mean the app is unsafe. Every release is scanned with VirusTotal before publishing. [The v1.2.1 scan](https://www.virustotal.com/gui/file/0f66bdabe0975a235539f9fee63dcb036d129c76ce551f14d48d84682eb0c636/detection) shows **68/71 engines clean** — the 3 that flag it are heuristic/ML-only detections with no malware signature match, a known false positive pattern for unsigned Rust apps. Source code is fully open on GitHub.
 
 ---
 
@@ -105,7 +105,7 @@ Yes. Core features — unlimited local boards, DAW scanning, tags, notes, themes
 **Why does Windows show a security warning when I install it?**  
 TrackFlow isn't signed with a paid certificate yet. Windows SmartScreen flags any app without a certificate authority reputation. Click "More info" → "Run anyway".
 
-The v1.2.1 VirusTotal scan shows [68/71 engines clean](https://www.virustotal.com/gui/file/VIRUSTOTAL_HASH_PLACEHOLDER). The 3 that flag it are heuristic/ML-only detections (Sophos "Generic ML PUA", SecureAge, Arctic Wolf) — none match a known malware signature. This is a documented false positive pattern for newly compiled, unsigned Rust binaries. Every major engine — Windows Defender, Kaspersky, ESET, Bitdefender, Avast, Norton, Malwarebytes — reports clean.
+The v1.2.1 VirusTotal scan shows [68/71 engines clean](https://www.virustotal.com/gui/file/0f66bdabe0975a235539f9fee63dcb036d129c76ce551f14d48d84682eb0c636/detection). The 3 that flag it are heuristic/ML-only detections (Sophos "Generic ML PUA", SecureAge, Arctic Wolf) — none match a known malware signature. This is a documented false positive pattern for newly compiled, unsigned Rust binaries. Every major engine — Windows Defender, Kaspersky, ESET, Bitdefender, Avast, Norton, Malwarebytes — reports clean.
 
 **What DAWs are supported?**  
 FL Studio (`.flp`), Ableton Live (`.als`), Pro Tools (`.ptx`/`.ptf`), and Reaper (`.rpp`). Logic Pro and Mac support are in development.
