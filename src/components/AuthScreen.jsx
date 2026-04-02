@@ -419,13 +419,6 @@ export function AuthScreenInner({ signIn, signUp, onOffline, resetPassword }) {
             </div>
             <TrustRow />
           </div>
-          <div style={{ textAlign: "center", marginTop: 16 }}>
-            <button onClick={onOffline} style={{ background: "transparent", border: "none", color: C.text3, fontFamily: "Syne, sans-serif", fontSize: 11, cursor: "pointer", padding: "6px 12px", transition: "color 0.15s" }}
-              onMouseEnter={e => e.currentTarget.style.color = C.text2}
-              onMouseLeave={e => e.currentTarget.style.color = C.text3}>
-              Continue without account →
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -480,13 +473,6 @@ export function AuthScreenInner({ signIn, signUp, onOffline, resetPassword }) {
               </>
             )}
             <TrustRow />
-          </div>
-          <div style={{ textAlign: "center", marginTop: 16 }}>
-            <button onClick={onOffline} style={{ background: "transparent", border: "none", color: C.text3, fontFamily: "Syne, sans-serif", fontSize: 11, cursor: "pointer", padding: "6px 12px", transition: "color 0.15s" }}
-              onMouseEnter={e => e.currentTarget.style.color = C.text2}
-              onMouseLeave={e => e.currentTarget.style.color = C.text3}>
-              Continue without account →
-            </button>
           </div>
         </div>
       </div>
@@ -550,14 +536,6 @@ export function AuthScreenInner({ signIn, signUp, onOffline, resetPassword }) {
           </form>
 
           <TrustRow />
-        </div>
-
-        <div style={{ textAlign: "center", marginTop: 16 }}>
-          <button onClick={onOffline} style={{ background: "transparent", border: "none", color: C.text3, fontFamily: "Syne, sans-serif", fontSize: 11, cursor: "pointer", padding: "6px 12px", transition: "color 0.15s" }}
-            onMouseEnter={e => e.currentTarget.style.color = C.text2}
-            onMouseLeave={e => e.currentTarget.style.color = C.text3}>
-            Continue without account →
-          </button>
         </div>
       </div>
     </div>

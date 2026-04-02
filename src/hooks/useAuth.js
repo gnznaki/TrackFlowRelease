@@ -1,17 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
-const OFFLINE_KEY = "trackflow-offline-mode";
-
 export function useAuth() {
   // undefined = still resolving, null = no session, object = signed in
   const [user, setUser] = useState(undefined);
-  const [isOffline, setIsOffline] = useState(
-    () => localStorage.getItem(OFFLINE_KEY) === "true"
-  );
 
   useEffect(() => {
-    // If supabase isn't configured, treat as offline immediately
+    // If supabase isn't configured, treat as signed out immediately
     if (!supabase) {
       setUser(null);
       return;
@@ -53,21 +48,11 @@ export function useAuth() {
     setUser(null);
   }
 
-  function goOffline() {
-    localStorage.setItem(OFFLINE_KEY, "true");
-    setIsOffline(true);
-  }
-
-  function leaveOffline() {
-    localStorage.removeItem(OFFLINE_KEY);
-    setIsOffline(false);
-  }
-
-  // Still resolving session — only block if not already in offline mode
-  const loading = user === undefined && !isOffline;
+  // Still resolving session
+  const loading = user === undefined;
 
   // The user's display initial for the avatar
   const initial = user?.email?.[0]?.toUpperCase() ?? null;
 
-  return { user, loading, isOffline, initial, signIn, signUp, signOut, resetPassword, goOffline, leaveOffline };
+  return { user, loading, initial, signIn, signUp, signOut, resetPassword };
 }

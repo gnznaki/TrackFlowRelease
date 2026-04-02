@@ -263,8 +263,7 @@ function makeDefaultPages() {
 }
 
 function App() {
-  const { user, loading: authLoading, isOffline, initial, signIn, signUp, signOut, resetPassword, goOffline } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { user, loading: authLoading, initial, signIn, signUp, signOut, resetPassword } = useAuth();
   const [ready, setReady] = useState(false);
 
   // ── PAGES STATE ───────────────────────────────────────────────────────────
@@ -709,6 +708,49 @@ function App() {
     });
   }, []);
 
+  // ── Reset all state on sign-out; reload state on sign-in ──────────────────
+  const prevUserRef = useRef(undefined);
+  useEffect(() => {
+    // Skip the very first render (undefined = not yet initialized)
+    if (prevUserRef.current === undefined) {
+      prevUserRef.current = user;
+      return;
+    }
+    const prevUser = prevUserRef.current;
+    prevUserRef.current = user;
+
+    if (prevUser && !user) {
+      // Sign-out: wipe every piece of per-user state from memory
+      setReady(false);
+      setPages(makeDefaultPages());
+      setCurrentPageId("producer");
+      setProjects([]);
+      setWatchedFolders([]);
+      setCustomTags(DEFAULT_TAGS);
+      setThemePreset("default");
+      setThemeCustom(BASE_PRESETS.default);
+      setFont("Syne");
+      setColMaxHeight(DEFAULT_COL_HEIGHT);
+      setCollapsedCols([]);
+      setLockedCols([]);
+      setSharedBoards([]);
+      setSelectedCard(null);
+      setActiveTagFilters([]);
+      setActiveProjectFilters([]);
+      // Overwrite the local save file with a blank slate so the next
+      // person who signs in cannot see this user's data, even briefly.
+      invoke("save_app_state", { state: JSON.stringify({ schemaVersion: 0, updatedAt: 0 }) }).catch(() => {});
+    } else if (!prevUser && user) {
+      // New sign-in: load state for this user (cloud-preferred via loadState)
+      setReady(false);
+      loadState().then(raw => {
+        applyLoadedState(migrateState(raw));
+        setReady(true);
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const pagesRef = useRef(pages);
   useEffect(() => { pagesRef.current = pages; }, [pages]);
 
@@ -847,7 +889,6 @@ function App() {
     return () => { try { document.head.removeChild(el); } catch (e) {} };
   }, [font]);
 
-  useEffect(() => { if (user) setShowAuthModal(false); }, [user]);
 
   const prevUserIdRef = useRef(null);
   useEffect(() => {
@@ -993,8 +1034,8 @@ function App() {
     </div>
   );
 
-  if (!user && !isOffline) return (
-    <AuthScreenInner signIn={signIn} signUp={signUp} onOffline={goOffline} resetPassword={resetPassword} />
+  if (!user) return (
+    <AuthScreenInner signIn={signIn} signUp={signUp} resetPassword={resetPassword} />
   );
 
   if (!ready) return (
@@ -1771,7 +1812,7 @@ function App() {
         <div style={{ position: "relative", flexShrink: 0 }}>
           <div
             title={user ? `${displayName || user.email} · ${tier}` : "Click to sign in or create account"}
-            onClick={() => user ? setShowProfileDropdown(v => !v) : setShowAuthModal(true)}
+            onClick={() => { if (user) setShowProfileDropdown(v => !v); }}
             style={{ width: 28, height: 28, borderRadius: "50%", background: user ? `linear-gradient(135deg, ${(AVATAR_GRADIENTS.find(g => g.key === avatarColor) || { a: theme.accent, b: "#47c8ff" }).a}, ${(AVATAR_GRADIENTS.find(g => g.key === avatarColor) || { a: theme.accent, b: "#47c8ff" }).b})` : theme.surface3, border: user ? "none" : `1px solid ${theme.border2}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: user ? theme.accentText : theme.text3, cursor: "pointer", overflow: "hidden" }}
             onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
             onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
@@ -1897,13 +1938,6 @@ function App() {
         document.body
       )}
 
-
-      {/* Auth modal for offline users who want to sign in */}
-      {showAuthModal && !user && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 10000 }}>
-          <AuthScreenInner signIn={signIn} signUp={signUp} onOffline={() => setShowAuthModal(false)} resetPassword={resetPassword} />
-        </div>
-      )}
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           <ProjectSidebar
