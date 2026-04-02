@@ -203,6 +203,7 @@ function CardDropZone({ colId, children, theme, isCardDrag, isColDrag, colMaxHei
   return (
     <div
       ref={ref}
+      data-col-scroller={colId}
       style={{
         padding: 12,
         height: colMaxHeight,

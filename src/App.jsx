@@ -808,41 +808,23 @@ function App() {
 
   const pendingScrollCardId = useRef(null);
 
-  // Explicitly scroll both the board (horizontally) and the column (vertically)
-  // to center a card. scrollIntoView is unreliable across nested scroll containers.
+  // Scroll the column that contains the card so the card is vertically centered.
+  // CardDropZone has data-col-scroller on it, so closest() finds it directly —
+  // no DOM walking or computed-style inspection needed.
   function scrollToCard(cardId) {
     const cardEl = document.querySelector(`[data-card-id="${cardId}"]`);
     if (!cardEl) return false;
 
-    const board = document.querySelector("[data-board-scroll]");
+    const colScroller = cardEl.closest("[data-col-scroller]");
+    if (!colScroller) return false;
 
-    // Walk up to find the column's scroll container (CardDropZone: fixed height + overflowY auto)
-    let colScroller = null;
-    let el = cardEl.parentElement;
-    while (el && el !== board) {
-      const s = window.getComputedStyle(el);
-      if ((s.overflowY === "auto" || s.overflowY === "scroll") && el.scrollHeight > el.clientHeight) {
-        colScroller = el;
-        break;
-      }
-      el = el.parentElement;
-    }
+    const colRect  = colScroller.getBoundingClientRect();
+    const cardRect = cardEl.getBoundingClientRect();
 
-    // Scroll board horizontally to center the card's column
-    if (board) {
-      const boardRect = board.getBoundingClientRect();
-      const cardRect = cardEl.getBoundingClientRect();
-      const targetLeft = board.scrollLeft + (cardRect.left + cardRect.width / 2) - (boardRect.left + boardRect.width / 2);
-      board.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
-    }
-
-    // Scroll column vertically to center the card
-    if (colScroller) {
-      const colRect = colScroller.getBoundingClientRect();
-      const cardRect = cardEl.getBoundingClientRect();
-      const targetTop = colScroller.scrollTop + (cardRect.top + cardRect.height / 2) - (colRect.top + colRect.height / 2);
-      colScroller.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
-    }
+    // Difference between the card's center and the column's center in the viewport.
+    // scrollBy this amount so the card lands in the middle of the column's visible area.
+    const offset = (cardRect.top + cardRect.height / 2) - (colRect.top + colRect.height / 2);
+    colScroller.scrollBy({ top: offset, behavior: "smooth" });
 
     return true;
   }
