@@ -33,6 +33,7 @@ import ContactModal from "./components/ContactModal";
 import { deleteAccount, openCustomerPortal } from "./lib/stripe";
 import TutorialModal from "./components/TutorialModal";
 import PurchaseGate from "./components/PurchaseGate";
+import useUpdater from "./hooks/useUpdater";
 import "./App.css";
 
 function hexToRgbInline(hex) {
@@ -318,6 +319,7 @@ function App() {
   const [colPickerState, setColPickerState] = useState(null); // { cols, message, resolve }
 
   const { tier, tierLoading, isPaid, isPremium, displayName, avatarColor, avatarUrl, createdAt, invitesDisabled, updateDisplayName, updateAvatarColor, updateAvatarUrl, updateInvitesDisabled } = useTier(user?.id);
+  const { update: appUpdate, installing: updateInstalling, installUpdate, dismiss: dismissUpdate } = useUpdater();
   const [pendingInvites, setPendingInvites] = useState([]);
   const [sentInvites, setSentInvites] = useState([]);
   const [editingDisplayName, setEditingDisplayName] = useState(false);
@@ -1682,6 +1684,20 @@ function App() {
       {showSettings && <SettingsPanel colMaxHeight={colMaxHeight} onSave={(mh) => { setColMaxHeight(mh); setShowSettings(false); }} onClose={() => setShowSettings(false)} onShowShortcuts={() => { setShowSettings(false); setShowShortcuts(true); }} onShowContact={() => { setShowSettings(false); setShowContact(true); }} theme={theme} />}
       {showContact && <ContactModal onClose={() => setShowContact(false)} theme={theme} />}
       {showShortcuts && <KeyboardShortcuts theme={theme} onClose={() => setShowShortcuts(false)} />}
+
+      {/* Update bar */}
+      {appUpdate && (
+        <div style={{ background: `rgba(${theme.accentRgb},0.12)`, borderBottom: `1px solid rgba(${theme.accentRgb},0.25)`, padding: "7px 16px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <span style={{ flex: 1, fontSize: 12, color: theme.accent, fontWeight: 600 }}>
+            TrackFlow v{appUpdate.version} is available
+            {appUpdate.body ? ` — ${appUpdate.body}` : ""}
+          </span>
+          <button onClick={installUpdate} disabled={updateInstalling} style={{ padding: "4px 14px", background: theme.accent, border: "none", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: updateInstalling ? "default" : "pointer", color: "#08080a", opacity: updateInstalling ? 0.6 : 1 }}>
+            {updateInstalling ? "Installing…" : "Update now"}
+          </button>
+          <button onClick={dismissUpdate} style={{ background: "transparent", border: "none", color: theme.text3, cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
+        </div>
+      )}
 
       {/* Error bar */}
       {showErrorBar && (
