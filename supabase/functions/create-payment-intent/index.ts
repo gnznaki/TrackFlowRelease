@@ -70,9 +70,9 @@ Deno.serve(async (req) => {
     const customerId = await getOrCreateCustomer(supabase, userId);
 
     if (priceKey === "premium_once") {
-      // One-time $15 payment — create a PaymentIntent
+      // One-time $10 payment — create a PaymentIntent
       const pi = await stripe.paymentIntents.create({
-        amount: 1500, // $15.00 in cents
+        amount: 1000, // $10.00 in cents
         currency: "usd",
         customer: customerId,
         metadata: { supabase_user_id: userId, price_id: priceId, tier: "premium" },

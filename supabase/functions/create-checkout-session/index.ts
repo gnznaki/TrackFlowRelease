@@ -4,11 +4,6 @@
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
-  apiVersion: "2023-10-16",
-  httpClient: Stripe.createFetchHttpClient(),
-});
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -18,6 +13,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not configured");
+
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: "2023-10-16",
+      httpClient: Stripe.createFetchHttpClient(),
+    });
+
     const { priceId, userId } = await req.json();
     if (!priceId || !userId) throw new Error("Missing priceId or userId");
 
@@ -50,11 +53,10 @@ Deno.serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      mode: "subscription",
-      // Desktop app: no redirect needed — the useTier hook picks up the change via Realtime
+      mode: "payment",
       success_url: `${Deno.env.get("SITE_URL") ?? "https://trackflow.app"}/checkout/success`,
       cancel_url: `${Deno.env.get("SITE_URL") ?? "https://trackflow.app"}/checkout/cancel`,
-      subscription_data: { metadata: { supabase_user_id: userId } },
+      payment_intent_data: { metadata: { supabase_user_id: userId } },
       allow_promotion_codes: true,
     });
 

@@ -30,8 +30,8 @@ const STEPS = [
   {
     selector: "[data-tutorial='share']",
     anchor: "below",
-    title: "Collaborate (Premium)",
-    desc: "Share a board with your engineer, A&R, or co-producer with role-based access. Coming soon as a one-time upgrade.",
+    title: "Collaborate",
+    desc: "Share a board with your engineer, A&R, or co-producer with role-based access. Invite by email and assign viewer or editor roles.",
   },
   {
     selector: null,

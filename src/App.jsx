@@ -1,5 +1,5 @@
 import { saveState, loadState, backupState } from "./storage";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { scanForProjects, pickAndScanFolder } from "./scanner";
 import { monitorForElements, dropTargetForElements, draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
@@ -32,6 +32,7 @@ import NamePromptModal from "./components/NamePromptModal";
 import ContactModal from "./components/ContactModal";
 import { deleteAccount, openCustomerPortal } from "./lib/stripe";
 import TutorialModal from "./components/TutorialModal";
+import PurchaseGate from "./components/PurchaseGate";
 import "./App.css";
 
 function hexToRgbInline(hex) {
@@ -316,7 +317,7 @@ function App() {
   const [searchActive, setSearchActive] = useState(false);
   const [colPickerState, setColPickerState] = useState(null); // { cols, message, resolve }
 
-  const { tier, isPaid, isPremium, displayName, avatarColor, avatarUrl, createdAt, invitesDisabled, updateDisplayName, updateAvatarColor, updateAvatarUrl, updateInvitesDisabled } = useTier(user?.id);
+  const { tier, tierLoading, isPaid, isPremium, displayName, avatarColor, avatarUrl, createdAt, invitesDisabled, updateDisplayName, updateAvatarColor, updateAvatarUrl, updateInvitesDisabled } = useTier(user?.id);
   const [pendingInvites, setPendingInvites] = useState([]);
   const [sentInvites, setSentInvites] = useState([]);
   const [editingDisplayName, setEditingDisplayName] = useState(false);
@@ -806,39 +807,29 @@ function App() {
   const cardClipboardRef = useRef(cardClipboard);
   useEffect(() => { cardClipboardRef.current = cardClipboard; }, [cardClipboard]);
 
-  const pendingScrollCardId = useRef(null);
-
-  // Scroll the column that contains the card so the card is vertically centered.
-  // CardDropZone has data-col-scroller on it, so closest() finds it directly —
-  // no DOM walking or computed-style inspection needed.
-  function scrollToCard(cardId) {
-    const cardEl = document.querySelector(`[data-card-id="${cardId}"]`);
-    if (!cardEl) return false;
-
-    const colScroller = cardEl.closest("[data-col-scroller]");
-    if (!colScroller) return false;
-
-    const colRect  = colScroller.getBoundingClientRect();
-    const cardRect = cardEl.getBoundingClientRect();
-
-    // Difference between the card's center and the column's center in the viewport.
-    // scrollBy this amount so the card lands in the middle of the column's visible area.
-    const offset = (cardRect.top + cardRect.height / 2) - (colRect.top + colRect.height / 2);
-    colScroller.scrollBy({ top: offset, behavior: "smooth" });
-
-    return true;
-  }
-
-  // After a page switch, wait for React to commit the new page then scroll.
-  useEffect(() => {
-    const id = pendingScrollCardId.current;
-    if (!id) return;
-    const frame = requestAnimationFrame(() => {
-      if (scrollToCard(id)) pendingScrollCardId.current = null;
-    });
-    return () => cancelAnimationFrame(frame);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPageId, columns]);
+  // Scroll trigger: set this to a cardId to scroll that card into center after
+  // the next commit. useLayoutEffect fires after React commits but before paint,
+  // so the card element is guaranteed to be in the DOM when the scroll runs.
+  const [scrollTarget, setScrollTarget] = useState(null);
+  useLayoutEffect(() => {
+    if (!scrollTarget) return;
+    const cardEl = document.querySelector(`[data-card-id="${scrollTarget}"]`);
+    if (cardEl) {
+      const colScroller = cardEl.closest("[data-col-scroller]");
+      if (colScroller) {
+        const colRect  = colScroller.getBoundingClientRect();
+        const cardRect = cardEl.getBoundingClientRect();
+        const offset = (cardRect.top + cardRect.height / 2) - (colRect.top + colRect.height / 2);
+        colScroller.scrollBy({ top: offset, behavior: "smooth" });
+      }
+      // Flash the card so the user can see which one was found
+      const accent = theme?.accent || "#c8ff47";
+      cardEl.style.transition = "box-shadow 0.1s";
+      cardEl.style.boxShadow = `0 0 0 2px ${accent}`;
+      setTimeout(() => { cardEl.style.boxShadow = ""; cardEl.style.transition = ""; }, 900);
+    }
+    setScrollTarget(null);
+  }, [scrollTarget]);
 
   // The handler itself lives in a ref so it always calls the latest functions.
   const kbHandlerRef = useRef(null);
@@ -1072,6 +1063,16 @@ function App() {
 
   if (!user) return (
     <AuthScreenInner signIn={signIn} signUp={signUp} resetPassword={resetPassword} />
+  );
+
+  if (tierLoading) return (
+    <div style={{ height: "100vh", background: "#0a0a0b", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Syne, sans-serif" }}>
+      <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0" }}>Track<span style={{ color: "#c8ff47" }}>Flow</span></div>
+    </div>
+  );
+
+  if (!isPaid) return (
+    <PurchaseGate user={user} signOut={signOut} />
   );
 
   if (!ready) return (
@@ -1483,13 +1484,12 @@ function App() {
     if (!targetPage) return;
     const card = targetPage.columns.flatMap(c => c.cards).find(c => c.id === cardId);
     if (!card) return;
+    // Batch all state updates together so React does one render.
+    // setScrollTarget triggers useLayoutEffect AFTER that render commits,
+    // guaranteeing the card's DOM element exists when we query it.
     setSelectedCard(card);
-    if (targetPage.id !== currentPageId) {
-      pendingScrollCardId.current = cardId;
-      setCurrentPageId(targetPage.id);
-    } else {
-      requestAnimationFrame(() => scrollToCard(cardId));
-    }
+    if (targetPage.id !== currentPageId) setCurrentPageId(targetPage.id);
+    setScrollTarget(cardId);
   }
   function handleUpdateNote(cardId, note) { if (isEffectiveViewer) return; setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.map(c => c.id === cardId ? { ...c, note } : c) }))); setSelectedCard(prev => prev?.id === cardId ? { ...prev, note } : prev); }
   function handleUpdateTags(cardId, tags) { if (isEffectiveViewer) return; setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.map(c => c.id === cardId ? { ...c, tags } : c) }))); setSelectedCard(prev => prev?.id === cardId ? { ...prev, tags } : prev); }

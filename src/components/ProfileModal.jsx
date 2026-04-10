@@ -22,25 +22,15 @@ export const AVATAR_GRADIENTS = [
 ];
 
 const PLANS_INFO = {
-  free: {
-    name: "Free",
-    color: null,
-    features: [
-      "Unlimited local boards",
-      "FL Studio, Ableton, Pro Tools & Reaper scanning",
-      "Kanban with tags, notes & filters",
-      "Cloud backup across devices",
-      "Join shared boards",
-    ],
-  },
-  premium: {
-    name: "Premium",
+  trackflow: {
+    name: "TrackFlow",
     color: "#c8ff47",
     features: [
-      "Everything in Free",
+      "FL Studio, Ableton, Pro Tools & Reaper scanning",
+      "Unlimited boards, columns & cards",
+      "Tags, notes, filters & search",
       "Share boards with collaborators",
-      "Real-time sync across all devices",
-      "Unlimited shared boards",
+      "Cloud backup & real-time sync",
       "Early access to new features",
     ],
   },
@@ -123,8 +113,8 @@ export default function ProfileModal({
   }
   const avatarLetter = displayName ? displayName[0].toUpperCase() : (user?.email?.[0]?.toUpperCase() ?? "?");
 
-  const tierPlan = isPremium ? PLANS_INFO.premium : PLANS_INFO.free;
-  const tierColor = isPremium ? C.accent : C.text3;
+  const tierPlan = PLANS_INFO.trackflow;
+  const tierColor = C.accent;
 
   async function handleSaveName() {
     if (!nameDraft.trim()) return;
@@ -468,7 +458,7 @@ export default function ProfileModal({
                   onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
                   onMouseLeave={e => e.currentTarget.style.opacity = "1"}
                 >
-                  Upgrade to Pro
+                  Purchase TrackFlow — $10
                 </button>
               )}
 
@@ -491,28 +481,13 @@ export default function ProfileModal({
                     onMouseEnter={e => e.currentTarget.style.borderColor = C.border2}
                     onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
                   >
-                    Manage Subscription
-                  </button>
-                  <button
-                    onClick={onUpgrade}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: C.accent,
-                      fontFamily: font,
-                      fontSize: 12,
-                      cursor: "pointer",
-                      padding: "4px 0",
-                      textDecoration: "underline",
-                    }}
-                  >
-                    Change Plan
+                    Manage Billing
                   </button>
                 </div>
               )}
 
               <div style={{ fontSize: 11, color: C.text3, textAlign: "center" }}>
-                Checkout opens in your browser. Tier updates automatically.
+                One-time purchase · No subscription · Instant access
               </div>
             </div>
           )}
@@ -692,6 +667,13 @@ export default function ProfileModal({
             Privacy Policy
           </button>
           <span style={{ color: C.border2, fontSize: 11 }}>·</span>
+          <button onClick={() => openLink("https://gnznaki.github.io/TrackingMyFlowDog/terms.html")}
+            style={{ background: "none", border: "none", padding: 0, color: C.text3, fontFamily: font, fontSize: 11, cursor: "pointer" }}
+            onMouseEnter={e => e.currentTarget.style.color = C.text2}
+            onMouseLeave={e => e.currentTarget.style.color = C.text3}>
+            Terms
+          </button>
+          <span style={{ color: C.border2, fontSize: 11 }}>·</span>
           <button onClick={() => openLink("https://github.com/gnznaki/TrackFlowRelease")}
             style={{ background: "none", border: "none", padding: 0, color: C.text3, fontFamily: font, fontSize: 11, cursor: "pointer" }}
             onMouseEnter={e => e.currentTarget.style.color = C.text2}
@@ -699,7 +681,7 @@ export default function ProfileModal({
             GitHub
           </button>
           <span style={{ flex: 1 }} />
-          <span style={{ fontSize: 11, color: C.text3 }}>TrackFlow v1.2.1</span>
+          <span style={{ fontSize: 11, color: C.text3 }}>TrackFlow v2.0.0</span>
         </div>
       </div>
     </div>

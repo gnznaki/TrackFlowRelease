@@ -210,11 +210,11 @@ function CardDropZone({ colId, children, theme, isCardDrag, isColDrag, colMaxHei
         overflowY: isColDrag ? "hidden" : "auto",
         pointerEvents: isColDrag ? "none" : undefined,
         background: isOver && isCardDrag
-          ? `rgba(${theme.accentRgb},0.1)`
+          ? `rgba(${theme.accentRgb},0.14)`
           : "transparent",
         border: isOver && isCardDrag
-          ? `1px dashed ${theme.accent}40`
-          : "1px solid transparent",
+          ? `2px solid ${theme.accent}90`
+          : "2px solid transparent",
         borderRadius: theme.r,
         transition: "background 0.15s, border 0.15s",
       }}

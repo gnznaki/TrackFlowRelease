@@ -1,10 +1,14 @@
+import { useState } from "react";
+import CheckoutModal from "./CheckoutModal";
+
 const FEATURES = [
+  "Unlimited local boards",
+  "Auto-scan DAW projects (.flp, .als, .ptx, .rpp)",
+  "Custom tags, notes & one-click open in DAW",
+  "Cloud backup & multi-device sync",
   "Share boards with collaborators in real-time",
   "Invite collaborators by email",
   "Role-based access — editor or viewer",
-  "Automatic cloud backup",
-  "Multi-device state sync",
-  "Lock boards to freeze editing",
 ];
 
 function Check({ color }) {
@@ -17,6 +21,7 @@ function Check({ color }) {
 
 export default function UpgradeModal({ onClose, theme }) {
   const C = theme;
+  const [showCheckout, setShowCheckout] = useState(false);
 
   return (
     <div
@@ -29,39 +34,56 @@ export default function UpgradeModal({ onClose, theme }) {
         <div style={{ padding: "22px 24px 18px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 17, fontWeight: 800, color: C.text, marginBottom: 4 }}>
-              <span style={{ color: "#c8ff47" }}>Premium</span> — Coming Soon
+              Get <span style={{ color: "#c8ff47" }}>TrackFlow</span>
             </div>
             <div style={{ fontSize: 12, color: C.text2, lineHeight: 1.6 }}>
-              Premium features are in the works. The core app will always remain free.
+              One-time purchase. Everything included. No subscription, ever.
             </div>
           </div>
           <button onClick={onClose} style={{ background: "transparent", border: "none", color: C.text3, cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "2px 4px", marginLeft: 16, flexShrink: 0 }}>×</button>
         </div>
 
-        {/* Feature preview list */}
-        <div style={{ padding: "20px 24px 0" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>What's coming</div>
+        {/* Price */}
+        <div style={{ padding: "20px 24px 4px", display: "flex", alignItems: "baseline", gap: 6 }}>
+          <span style={{ fontSize: 42, fontWeight: 900, color: "#c8ff47", lineHeight: 1 }}>$10</span>
+          <span style={{ fontSize: 12, color: C.text3 }}>one-time · no subscription · ever</span>
+        </div>
+
+        {/* Feature list */}
+        <div style={{ padding: "16px 24px 0" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Everything included</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {FEATURES.map(f => (
               <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                <Check color="#c8ff4760" />
-                <span style={{ fontSize: 13, color: C.text3, lineHeight: 1.5 }}>{f}</span>
+                <Check color="#c8ff47" />
+                <span style={{ fontSize: 13, color: C.text2, lineHeight: 1.5 }}>{f}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Coming soon footer */}
-        <div style={{ padding: "24px 24px 22px", display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ width: "100%", padding: "13px 0", background: C.surface2, border: `1px solid ${C.border2}`, borderRadius: C.r, textAlign: "center" }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: C.text3, letterSpacing: "0.06em" }}>COMING SOON</span>
-          </div>
+        {/* CTA */}
+        <div style={{ padding: "24px 24px 22px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <button
+            onClick={() => setShowCheckout(true)}
+            style={{ width: "100%", padding: "13px 0", background: "#c8ff47", border: "none", borderRadius: C.r, cursor: "pointer", fontSize: 13, fontWeight: 800, color: "#000", letterSpacing: "0.04em", fontFamily: C.font || "Syne" }}
+          >
+            Buy Now — $10
+          </button>
+
           <div style={{ fontSize: 11, color: C.text3, textAlign: "center", lineHeight: 1.6 }}>
-            Free forever for core features · Premium unlocks collaboration
+            Secure checkout · Instant access · Windows 10 / 11
           </div>
         </div>
 
       </div>
+
+      {showCheckout && (
+        <CheckoutModal
+          onClose={() => setShowCheckout(false)}
+          onSuccess={() => { setShowCheckout(false); onClose(); }}
+        />
+      )}
     </div>
   );
 }

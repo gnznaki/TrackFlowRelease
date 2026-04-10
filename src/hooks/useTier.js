@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 
 export function useTier(userId) {
   const [tier, setTier] = useState("free");
+  const [tierLoading, setTierLoading] = useState(true);
   const [displayName, setDisplayName] = useState("");
   const [avatarColor, setAvatarColor] = useState("lime");
   const [avatarUrl, setAvatarUrl] = useState(null);
@@ -10,7 +11,7 @@ export function useTier(userId) {
   const [invitesDisabled, setInvitesDisabled] = useState(false);
 
   useEffect(() => {
-    if (!userId || !supabase) return;
+    if (!userId || !supabase) { setTierLoading(false); return; }
 
     function applyProfile(row) {
       if (row?.tier) setTier(row.tier);
@@ -28,6 +29,7 @@ export function useTier(userId) {
       .single()
       .then(({ data, error }) => {
         if (data) applyProfile(data);
+        setTierLoading(false);
       });
 
     const channel = supabase
@@ -69,6 +71,7 @@ export function useTier(userId) {
 
   return {
     tier,
+    tierLoading,
     displayName,
     avatarColor,
     avatarUrl,

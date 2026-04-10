@@ -13,15 +13,15 @@ A native Windows desktop app for music producers and engineers to organize their
 - **Project library** — organize songs into named projects in the sidebar, click a song to jump straight to its card on the board
 - **Themes** — built-in presets plus full custom theme editor (colors, fonts, borders)
 - **Keyboard shortcuts** — power-user hotkeys for duplicate, delete, rename, and more
-- **Real-time collaboration** *(coming soon)* — share boards with producers and engineers, role-based access, cloud backup
+- **Real-time collaboration** — share boards with producers and engineers, role-based access, cloud backup
 
 ---
 
 ## Download
 
-**[Download for Windows (free)](https://github.com/gnznaki/TrackFlowRelease/releases/latest)**
+**[Download for Windows — $10](https://github.com/gnznaki/TrackFlowRelease/releases/latest)**
 
-Windows 10 / 11 · 64-bit · No subscription required
+Windows 10 / 11 · 64-bit · One-time purchase · No subscription
 
 ### Installation
 
@@ -31,11 +31,18 @@ Windows 10 / 11 · 64-bit · No subscription required
 4. TrackFlow installs and launches automatically
 
 > **Why does Windows warn me?**  
-> TrackFlow is not yet signed with a paid code-signing certificate. This triggers a SmartScreen warning on every install — it does *not* mean the app is unsafe. Every release is scanned with VirusTotal before publishing. [The v1.2.1 scan](https://www.virustotal.com/gui/file/0f66bdabe0975a235539f9fee63dcb036d129c76ce551f14d48d84682eb0c636/detection) shows **68/71 engines clean** — the 3 that flag it are heuristic/ML-only detections with no malware signature match, a known false positive pattern for unsigned Rust apps. Source code is fully open on GitHub.
+> TrackFlow is not yet signed with a paid code-signing certificate. This triggers a SmartScreen warning on every install — it does *not* mean the app is unsafe. Every release is scanned with VirusTotal before publishing. [The v2.0.0 scan](https://www.virustotal.com/gui/file/0f66bdabe0975a235539f9fee63dcb036d129c76ce551f14d48d84682eb0c636/detection) shows **68/71 engines clean** — the 3 that flag it are heuristic/ML-only detections with no malware signature match, a known false positive pattern for unsigned Rust apps. Source code is fully open on GitHub.
 
 ---
 
 ## Recent Updates
+
+### v2.0.0
+- Paid release — $10 one-time purchase via embedded Stripe checkout (no browser redirect)
+- Purchase gate: prompts unpaid users to buy immediately after sign-in
+- Stripe webhook auto-unlocks account on payment — no manual step required
+- Resizable detail panel — drag the left edge to set your preferred width
+- Version bump and full app polish pass
 
 ### v1.2.0
 - Real-time collaboration system — share boards, invite by email, role-based access (editor / viewer)
@@ -83,7 +90,7 @@ No lint or test commands are configured.
 | Desktop shell | Tauri 2 (Rust) |
 | Auth / DB | Supabase (Postgres + Realtime) |
 | Drag and drop | @atlaskit/pragmatic-drag-and-drop |
-| Payments | Stripe (coming soon) |
+| Payments | Stripe (embedded checkout) |
 
 ### State persistence
 
@@ -99,8 +106,8 @@ App state is saved to `%APPDATA%\com.trackflow.app\trackflow-state.json` via the
 
 ## FAQ
 
-**Is TrackFlow free?**  
-Yes. Core features — unlimited local boards, DAW scanning, tags, notes, themes — are free forever. Premium features (real-time collaboration, cloud backup) are coming soon as an optional one-time upgrade.
+**How much does TrackFlow cost?**  
+$10 one-time purchase. No subscription, no recurring charges. Includes all features — unlimited boards, DAW scanning, tags, notes, themes, and real-time collaboration.
 
 **Why does Windows show a security warning when I install it?**  
 TrackFlow isn't signed with a paid certificate yet. Windows SmartScreen flags any app without a certificate authority reputation. Click "More info" → "Run anyway".

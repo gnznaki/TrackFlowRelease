@@ -10,14 +10,14 @@ async function openExternal(url) {
   }
 }
 
-// premium_once  = $15 one-time payment
+// premium_once  = $10 one-time payment
 export const PRICES = {
   premium_once: import.meta.env.VITE_STRIPE_PREMIUM_PRICE_ID,
 };
 
 export const PLAN_DISPLAY = {
   free:    { name: "Free",     price: "$0",  sub: "forever",   color: null },
-  premium: { name: "Premium",  price: "$15", sub: "one-time",  color: "#c8ff47" },
+  premium: { name: "TrackFlow", price: "$10", sub: "one-time", color: "#c8ff47" },
 };
 
 async function getUserId() {
@@ -63,12 +63,19 @@ export async function createPaymentIntent(priceKey) {
  */
 export async function startCheckout(priceKey) {
   if (!PRICES[priceKey]) return { error: "Stripe price ID not configured." };
-  const userId = await getUserId();
-  if (!userId) return { error: "Not signed in" };
+  const session = await getSession();
+  if (!session?.user?.id) return { error: "Not signed in" };
   const { data, error } = await supabase.functions.invoke("create-checkout-session", {
-    body: { priceId: PRICES[priceKey], userId },
+    body: { priceId: PRICES[priceKey], userId: session.user.id },
+    headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
   });
-  if (error || !data?.url) return { error: error?.message ?? "Failed to create checkout session" };
+  if (error || !data?.url) {
+    try {
+      const body = await error?.context?.json?.();
+      if (body?.error) return { error: body.error };
+    } catch {}
+    return { error: error?.message ?? "Failed to create checkout session" };
+  }
   await openExternal(data.url);
   return { error: null };
 }
