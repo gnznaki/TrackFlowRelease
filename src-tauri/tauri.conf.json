@@ -28,7 +28,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "REPLACE_WITH_PUBLIC_KEY",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRBM0NBNTI5RjAzQzY0QwpSV1JNeGdPZlVzcWpCSmtzRThpRFZ1clA0TUJIY3RXeTFieGFuZzZ1NzlILzRRR2tGSkRMdjRVRAo=",
       "endpoints": [
         "https://gnznaki.github.io/TrackFlow-Site/latest.json"
       ]
