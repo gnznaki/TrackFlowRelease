@@ -31,7 +31,7 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
-      - name: Build Tauri app
+      - name: Build and release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -40,7 +40,66 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "TrackFlow ${{ github.ref_name }}"
-          releaseBody: |
-            See the assets below to download and install TrackFlow.
+          releaseBody: "Download the installer below to update TrackFlow."
           releaseDraft: false
           prerelease: false
+
+      - name: Get version from tag
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Read installer signature
+        id: sig
+        shell: pwsh
+        run: |
+          $sig = Get-Content "src-tauri/target/release/bundle/nsis/TrackFlow_${{ steps.version.outputs.version }}_x64-setup.exe.sig" -Raw
+          $sig = $sig.Trim()
+          echo "signature=$sig" >> $env:GITHUB_OUTPUT
+
+      - name: Update latest.json in website repo
+        shell: pwsh
+        env:
+          SITE_TOKEN: ${{ secrets.SITE_DEPLOY_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          SIGNATURE: ${{ steps.sig.outputs.signature }}
+        run: |
+          $version  = $env:VERSION
+          $sig      = $env:SIGNATURE
+          $pubDate  = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+          $url      = "https://github.com/gnznaki/TrackFlowRelease/releases/download/v$version/TrackFlow_${version}_x64-setup.exe"
+
+          $json = @{
+            version   = $version
+            notes     = "See https://github.com/gnznaki/TrackFlowRelease/releases/tag/v$version"
+            pub_date  = $pubDate
+            platforms = @{
+              "windows-x86_64" = @{
+                signature = $sig
+                url       = $url
+              }
+            }
+          } | ConvertTo-Json -Depth 5
+
+          # Get current file SHA
+          $headers = @{ Authorization = "token $env:SITE_TOKEN"; "User-Agent" = "TrackFlow-CI" }
+          $current = Invoke-RestMethod -Uri "https://api.github.com/repos/gnznaki/TrackFlow-Site/contents/latest.json" -Headers $headers
+          $sha = $current.sha
+
+          # Encode content
+          $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
+
+          # Push update
+          $body = @{
+            message = "Update latest.json for v$version"
+            content = $encoded
+            sha     = $sha
+          } | ConvertTo-Json
+
+          Invoke-RestMethod -Method Put `
+            -Uri "https://api.github.com/repos/gnznaki/TrackFlow-Site/contents/latest.json" `
+            -Headers $headers `
+            -Body $body `
+            -ContentType "application/json"
+
+          Write-Host "latest.json updated to v$version"

@@ -13,7 +13,7 @@ export async function postToDiscord(title, message, color = 0xff4444) {
           title,
           color,
           description: message.substring(0, 2000),
-          footer: { text: `TrackFlow v2.0.0 · ${new Date().toLocaleString()}` },
+          footer: { text: `TrackFlow v2.0.1 · ${new Date().toLocaleString()}` },
         }],
       }),
     });
