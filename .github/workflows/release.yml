@@ -72,7 +72,7 @@ jobs:
       - name: Update latest.json in website repo
         shell: pwsh
         env:
-          SITE_TOKEN: ${{ secrets.SITE_DEPLOY_TOKEN }}
+          SITE_TOKEN: ${{ secrets.SITE_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
           SIGNATURE: ${{ steps.sig.outputs.signature }}
           BUNDLE: ${{ steps.sig.outputs.bundle }}
