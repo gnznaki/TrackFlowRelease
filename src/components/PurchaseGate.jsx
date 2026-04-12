@@ -20,7 +20,7 @@ function Check() {
   );
 }
 
-export default function PurchaseGate({ user, signOut }) {
+export default function PurchaseGate({ user, signOut, onRefreshTier }) {
   const [showCheckout, setShowCheckout] = useState(false);
   const [checking, setChecking] = useState(false);
   const [message, setMessage] = useState(null);
@@ -31,10 +31,11 @@ export default function PurchaseGate({ user, signOut }) {
     const { data } = await supabase.from("profiles").select("tier").eq("id", user.id).single();
     if (data?.tier === "premium" || data?.tier === "ongoing") {
       setMessage("Purchase confirmed! Loading...");
+      await onRefreshTier?.();
     } else {
       setMessage("No purchase found. Complete checkout first.");
+      setChecking(false);
     }
-    setChecking(false);
   }
 
   return (
@@ -138,7 +139,10 @@ export default function PurchaseGate({ user, signOut }) {
       {showCheckout && (
         <CheckoutModal
           onClose={() => setShowCheckout(false)}
-          onSuccess={() => setShowCheckout(false)}
+          onSuccess={async () => {
+            setShowCheckout(false);
+            setTimeout(() => onRefreshTier?.(), 2000);
+          }}
         />
       )}
     </div>

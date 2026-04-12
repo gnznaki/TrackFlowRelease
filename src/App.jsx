@@ -33,7 +33,10 @@ import ContactModal from "./components/ContactModal";
 import { deleteAccount, openCustomerPortal } from "./lib/stripe";
 import TutorialModal from "./components/TutorialModal";
 import PurchaseGate from "./components/PurchaseGate";
+import TrialWelcomeModal from "./components/TrialWelcomeModal";
 import useUpdater from "./hooks/useUpdater";
+
+const TRIAL_END = new Date("2026-05-11T23:59:59Z");
 import "./App.css";
 
 function hexToRgbInline(hex) {
@@ -277,7 +280,6 @@ function App() {
   const [editingPageId, setEditingPageId] = useState(null);
 
   const [layoutView, setLayoutView] = useState("grid");
-  const [projectsCollapsed, setProjectsCollapsed] = useState(false);
   const [projects, setProjects] = useState([]);
   const [watchedFolders, setWatchedFolders] = useState([]);
   const [customTags, setCustomTags] = useState(DEFAULT_TAGS);
@@ -303,6 +305,9 @@ function App() {
   const [collapsedCols, setCollapsedCols] = useState([]);
   const [lockedCols, setLockedCols] = useState([]);
   const [showContact, setShowContact] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const inTrial = new Date() < TRIAL_END;
+  const [boardZoom, setBoardZoom] = useState(100);
   const [searchQuery, setSearchQuery] = useState("");
   const [errorLog, setErrorLog] = useState([]);
   const [showErrorBar, setShowErrorBar] = useState(false);
@@ -318,7 +323,7 @@ function App() {
   const [searchActive, setSearchActive] = useState(false);
   const [colPickerState, setColPickerState] = useState(null); // { cols, message, resolve }
 
-  const { tier, tierLoading, isPaid, isPremium, displayName, avatarColor, avatarUrl, createdAt, invitesDisabled, updateDisplayName, updateAvatarColor, updateAvatarUrl, updateInvitesDisabled } = useTier(user?.id);
+  const { tier, tierLoading, isPaid, isPremium, displayName, avatarColor, avatarUrl, createdAt, invitesDisabled, updateDisplayName, updateAvatarColor, updateAvatarUrl, updateInvitesDisabled, refreshTier } = useTier(user?.id);
   const { update: appUpdate, installing: updateInstalling, installUpdate, dismiss: dismissUpdate } = useUpdater();
   const [pendingInvites, setPendingInvites] = useState([]);
   const [sentInvites, setSentInvites] = useState([]);
@@ -767,6 +772,10 @@ function App() {
         if (!localStorage.getItem(tutorialKey)) {
           setShowTutorial(true);
         }
+        const welcomeKey = `tf_welcome_seen_${user.id}`;
+        if (inTrial && !localStorage.getItem(welcomeKey)) {
+          setShowWelcome(true);
+        }
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -876,12 +885,29 @@ function App() {
       requestConfirm({ title: "Delete card?", message: `Delete "${card.title}"? This cannot be undone.`, confirmLabel: "Delete", onConfirm: () => handleDeleteCard(card.id) });
       return;
     }
+    if (ctrl && (e.key === "-" || e.key === "_")) { e.preventDefault(); setBoardZoom(z => Math.max(50, z - 10)); return; }
+    if (ctrl && (e.key === "=" || e.key === "+")) { e.preventDefault(); setBoardZoom(z => Math.min(100, z + 10)); return; }
+    if (ctrl && e.key === "0") { e.preventDefault(); setBoardZoom(100); return; }
   };
 
   useEffect(() => {
     const onKey = (e) => kbHandlerRef.current?.(e);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    function onWheel(e) {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      if (e.deltaY < 0) {
+        setBoardZoom(z => Math.min(100, z + 10));
+      } else {
+        setBoardZoom(z => Math.max(50, z - 10));
+      }
+    }
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel);
   }, []);
 
   // Orphan cleanup
@@ -1073,8 +1099,8 @@ function App() {
     </div>
   );
 
-  if (!isPaid) return (
-    <PurchaseGate user={user} signOut={signOut} />
+  if (!isPaid && !inTrial) return (
+    <PurchaseGate user={user} signOut={signOut} onRefreshTier={refreshTier} />
   );
 
   if (!ready) return (
@@ -1683,6 +1709,7 @@ function App() {
       {showTutorial && <TutorialModal onClose={() => { localStorage.setItem(`tf_tutorial_seen_${user.id}`, "1"); setShowTutorial(false); }} theme={theme} />}
       {showSettings && <SettingsPanel colMaxHeight={colMaxHeight} onSave={(mh) => { setColMaxHeight(mh); setShowSettings(false); }} onClose={() => setShowSettings(false)} onShowShortcuts={() => { setShowSettings(false); setShowShortcuts(true); }} onShowContact={() => { setShowSettings(false); setShowContact(true); }} theme={theme} />}
       {showContact && <ContactModal onClose={() => setShowContact(false)} theme={theme} />}
+      {showWelcome && <TrialWelcomeModal onClose={() => { localStorage.setItem(`tf_welcome_seen_${user.id}`, "1"); setShowWelcome(false); }} theme={theme} />}
       {showShortcuts && <KeyboardShortcuts theme={theme} onClose={() => setShowShortcuts(false)} />}
 
       {/* Update bar */}
@@ -1825,6 +1852,31 @@ function App() {
 
         <SortFilterDropdown sortBy={sortBy} setSortBy={setSortBy} sortDir={sortDir} setSortDir={setSortDir} allTags={customTags} activeTagFilters={activeTagFilters} setActiveTagFilters={setActiveTagFilters} projects={projects} activeProjectFilters={activeProjectFilters} setActiveProjectFilters={setActiveProjectFilters} theme={theme} />
 
+        {/* Zoom control */}
+        <div style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: theme.surface2, border: `1px solid ${boardZoom < 100 ? theme.accent + "50" : theme.border}`, borderRadius: theme.r, overflow: "hidden", transition: "border-color 0.15s" }}>
+          <button
+            onClick={() => setBoardZoom(z => Math.max(50, z - 10))}
+            disabled={boardZoom <= 50}
+            title="Zoom out (Ctrl+-)"
+            style={{ width: 22, height: 24, background: "transparent", border: "none", color: boardZoom <= 50 ? theme.text3 : theme.text2, cursor: boardZoom <= 50 ? "default" : "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", opacity: boardZoom <= 50 ? 0.3 : 1 }}
+            onMouseEnter={e => { if (boardZoom > 50) e.currentTarget.style.color = theme.accent; }}
+            onMouseLeave={e => { e.currentTarget.style.color = theme.text2; }}
+          >−</button>
+          <button
+            onClick={() => setBoardZoom(100)}
+            title="Reset zoom (Ctrl+0)"
+            style={{ minWidth: 36, height: 24, background: "transparent", border: "none", color: boardZoom < 100 ? theme.accent : theme.text3, cursor: boardZoom < 100 ? "pointer" : "default", fontSize: 10, fontWeight: 700, fontFamily: font || "Syne", letterSpacing: "0.02em" }}
+          >{boardZoom}%</button>
+          <button
+            onClick={() => setBoardZoom(z => Math.min(100, z + 10))}
+            disabled={boardZoom >= 100}
+            title="Zoom in (Ctrl+=)"
+            style={{ width: 22, height: 24, background: "transparent", border: "none", color: boardZoom >= 100 ? theme.text3 : theme.text2, cursor: boardZoom >= 100 ? "default" : "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", opacity: boardZoom >= 100 ? 0.3 : 1 }}
+            onMouseEnter={e => { if (boardZoom < 100) e.currentTarget.style.color = theme.accent; }}
+            onMouseLeave={e => { e.currentTarget.style.color = theme.text2; }}
+          >+</button>
+        </div>
+
         {watchedFolders.length > 0 && <div style={{ fontSize: 10, fontFamily: "monospace", color: theme.text3, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{watchedFolders.length} folder{watchedFolders.length > 1 ? "s" : ""} watched</div>}
         {/* Save dropdown */}
         <div style={{ position: "relative", flexShrink: 0 }}>
@@ -1842,7 +1894,6 @@ function App() {
             <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: theme.surface, border: `1px solid ${theme.border2}`, borderRadius: theme.r, boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 180, zIndex: 9999, overflow: "hidden", fontFamily: font || "Syne" }}>
               {[
                 { label: "Backup now", icon: Icons.backup, action: async () => { setShowSaveMenu(false); const p = await backupState(); if (p) alert(`Backup saved:\n${p}`); } },
-                { label: "Open save folder", icon: Icons.folder, action: async () => { setShowSaveMenu(false); await invoke("open_save_folder"); } },
                 { label: "Load save file…", icon: Icons.scan, action: handleLoadSave },
               ].map((item, i) => (
                 <button key={i} onClick={item.action} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "9px 14px", background: "transparent", border: "none", color: theme.text2, cursor: "pointer", fontSize: 12, fontFamily: "inherit", textAlign: "left" }}
@@ -2013,8 +2064,6 @@ function App() {
             theme={theme}
             allColumns={pages.flatMap(p => p.columns)}
             isCardDrag={isCardDrag}
-            collapsed={projectsCollapsed}
-            onToggleCollapsed={() => setProjectsCollapsed(v => !v)}
           />
 
           <div data-board-scroll onContextMenu={e => { e.preventDefault(); setBoardContextMenu({ x: e.clientX, y: e.clientY }); }} style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "auto", opacity: modeTransition ? 0 : 1, transition: "opacity 0.25s, background 0.4s", background: `rgba(${hexToRgbInline(modeAccent)},0.025)` }}>
@@ -2026,7 +2075,7 @@ function App() {
                 </span>
               </div>
             )}
-            <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 16, minWidth: "fit-content" }}>
+            <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 16, minWidth: "fit-content", zoom: boardZoom / 100 }}>
               {layout.map((rowColIds, rowIdx) => (
                 <div key={rowIdx} onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setBoardContextMenu({ x: e.clientX, y: e.clientY, rowIdx }); }} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                   <RowDropZone rowIdx={rowIdx} isGridView={isGridView} isCardDrag={isCardDrag} activeColId={activeColId} theme={theme} onColOverRow={handleColOverRow}>

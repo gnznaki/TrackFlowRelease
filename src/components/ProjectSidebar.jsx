@@ -351,10 +351,81 @@ export function DroppableProject({ proj, isExpanded, onToggle, onDelete, onRenam
   );
 }
 
-export default function ProjectSidebar({ projects, onAddProject, onDeleteProject, onAddSong, onRemoveSong, onRenameProject, onChangeColor, onReorderSongs, onRenameCard, onDeleteCard, onSongClick, theme, allColumns, isCardDrag, collapsed, onToggleCollapsed }) {
+const COLLAPSED_WIDTH   = 52;
+const DEFAULT_WIDTH     = 235;
+const MIN_WIDTH         = 180;
+const MAX_WIDTH         = 400;
+const COLLAPSE_THRESHOLD = 120;
+
+function ResizeHandle({ onDragStart, onDragEnd, onResize, theme }) {
+  const [hovered, setHovered] = useState(false);
+  const draggingRef = useRef(false);
+
+  const handleMouseDown = useCallback((e) => {
+    e.preventDefault();
+    draggingRef.current = true;
+    onDragStart();
+    const startX = e.clientX;
+
+    function onMouseMove(e) {
+      onResize(e.clientX - startX);
+    }
+    function onMouseUp() {
+      draggingRef.current = false;
+      onDragEnd();
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    }
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  }, [onDragStart, onDragEnd, onResize]);
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: "absolute",
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 5,
+        cursor: "col-resize",
+        zIndex: 10,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <div style={{
+        width: 2,
+        height: "100%",
+        background: hovered ? `rgba(255,255,255,0.15)` : "transparent",
+        transition: "background 0.15s",
+      }} />
+    </div>
+  );
+}
+
+export default function ProjectSidebar({ projects, onAddProject, onDeleteProject, onAddSong, onRemoveSong, onRenameProject, onChangeColor, onReorderSongs, onRenameCard, onDeleteCard, onSongClick, theme, allColumns, isCardDrag }) {
   const [expandedId, setExpandedId] = useState(null);
   const getAllCards = useCallback(() => allColumns.flatMap(col => col.cards), [allColumns]);
   const [areaContextMenu, setAreaContextMenu] = useState(null);
+  const [collapsed, setCollapsed] = useState(false);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [isDragging, setIsDragging] = useState(false);
+  const startWidthRef = useRef(DEFAULT_WIDTH);
+
+  function handleResize(deltaX) {
+    const newW = startWidthRef.current + deltaX;
+    if (newW <= COLLAPSE_THRESHOLD) {
+      setCollapsed(true);
+    } else {
+      setCollapsed(false);
+      setWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, newW)));
+    }
+  }
 
   // ── SONG DRAG AUTO-SCROLL ─────────────────────────────────────────────────
   // `dragover` on document is the only event that reliably fires during a native
@@ -420,18 +491,26 @@ export default function ProjectSidebar({ projects, onAddProject, onDeleteProject
     };
   }, [isSongDrag]);
 
+  const renderWidth = collapsed ? COLLAPSED_WIDTH : width;
+
   return (
-    <div data-tutorial="sidebar" style={{ width: collapsed ? 52 : 235, flexShrink: 0, borderRight: `1px solid ${theme.border}`, background: theme.surface, display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.18s" }}>
+    <div data-tutorial="sidebar" style={{ width: renderWidth, flexShrink: 0, borderRight: `1px solid ${theme.border}`, background: theme.surface, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative", transition: isDragging ? "none" : "width 0.18s" }}>
+      <ResizeHandle
+        onDragStart={() => { startWidthRef.current = collapsed ? COLLAPSED_WIDTH : width; setIsDragging(true); }}
+        onDragEnd={() => setIsDragging(false)}
+        onResize={handleResize}
+        theme={theme}
+      />
       <div
         onContextMenu={collapsed ? undefined : e => { e.preventDefault(); setAreaContextMenu({ x: e.clientX, y: e.clientY }); }}
-        style={{ padding: collapsed ? "12px 10px" : "13px 14px 10px", borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: collapsed ? "center" : "center", justifyContent: "space-between", gap: 8, flexDirection: collapsed ? "column" : "row" }}>
+        style={{ padding: collapsed ? "12px 10px" : "13px 14px 10px", borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexDirection: collapsed ? "column" : "row" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", justifyContent: collapsed ? "center" : "flex-start" }}>
           <Icon d={Icons.album} size={13} style={{ color: theme.accent }} />
           {!collapsed && <span style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>Projects</span>}
         </div>
         {collapsed ? (
           <button
-            onClick={onToggleCollapsed}
+            onClick={() => { setCollapsed(false); }}
             title="Expand Projects"
             style={{ width: 26, height: 18, borderRadius: 999, border: `1px solid ${theme.border2}`, background: theme.surface2, color: theme.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", marginTop: 8 }}
             onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.borderColor = theme.accent; }}
@@ -443,7 +522,7 @@ export default function ProjectSidebar({ projects, onAddProject, onDeleteProject
             <button onClick={onAddProject} style={{ width: 22, height: 22, borderRadius: theme.r - 2, border: `1px solid ${theme.border2}`, background: "transparent", color: theme.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.borderColor = theme.accent; }} onMouseLeave={e => { e.currentTarget.style.color = theme.text2; e.currentTarget.style.borderColor = theme.border2; }}>
               <Icon d={Icons.plus} size={11} />
             </button>
-            <button onClick={onToggleCollapsed} title="Collapse Projects"
+            <button onClick={() => setCollapsed(true)} title="Collapse Projects"
               style={{ width: 22, height: 22, borderRadius: theme.r - 2, border: `1px solid ${theme.border2}`, background: "transparent", color: theme.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
               onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.borderColor = theme.accent; }}
               onMouseLeave={e => { e.currentTarget.style.color = theme.text2; e.currentTarget.style.borderColor = theme.border2; }}>

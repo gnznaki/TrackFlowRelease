@@ -69,6 +69,12 @@ export function useTier(userId) {
     await supabase.from("profiles").update({ invites_disabled: val }).eq("id", userId);
   }
 
+  async function refreshTier() {
+    if (!userId || !supabase) return;
+    const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
+    if (data) applyProfile(data);
+  }
+
   return {
     tier,
     tierLoading,
@@ -81,6 +87,7 @@ export function useTier(userId) {
     updateAvatarColor,
     updateAvatarUrl,
     updateInvitesDisabled,
+    refreshTier,
     isFree: tier === "free",
     isPremium: tier === "premium",
     isPaid: tier === "premium" || tier === "ongoing",
