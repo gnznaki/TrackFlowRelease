@@ -2,6 +2,7 @@ import { saveState, loadState, backupState } from "./storage";
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { scanForProjects, pickAndScanFolder } from "./scanner";
+import { extractDawMeta } from "./lib/dawParser";
 import { monitorForElements, dropTargetForElements, draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
@@ -307,6 +308,8 @@ function App() {
   const [lockedCols, setLockedCols] = useState([]);
   const [showContact, setShowContact] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [autoTagBpm, setAutoTagBpm] = useState(false);
+  const [autoTagKey, setAutoTagKey] = useState(false);
   const inTrial = new Date() < TRIAL_END;
   const [boardZoom, setBoardZoom] = useState(100);
   const [searchQuery, setSearchQuery] = useState("");
@@ -703,6 +706,8 @@ function App() {
     setCollapsedCols(saved.collapsedCols);
     setLockedCols(saved.lockedCols);
     if (saved.sharedBoards) setSharedBoards(saved.sharedBoards);
+    if (saved.autoTagBpm != null) setAutoTagBpm(saved.autoTagBpm);
+    if (saved.autoTagKey != null) setAutoTagKey(saved.autoTagKey);
   }
 
   async function handleLoadSave() {
@@ -809,8 +814,8 @@ function App() {
 
   useEffect(() => {
     if (!ready) return;
-    saveState({ pages, currentPageId, projects, watchedFolders, customTags, themePreset, themeCustom, font, colMaxHeight, collapsedCols, lockedCols, sharedBoards });
-  }, [ready, pages, currentPageId, projects, watchedFolders, customTags, themePreset, themeCustom, font, colMaxHeight, collapsedCols, lockedCols, sharedBoards]);
+    saveState({ pages, currentPageId, projects, watchedFolders, customTags, themePreset, themeCustom, font, colMaxHeight, collapsedCols, lockedCols, sharedBoards, autoTagBpm, autoTagKey });
+  }, [ready, pages, currentPageId, projects, watchedFolders, customTags, themePreset, themeCustom, font, colMaxHeight, collapsedCols, lockedCols, sharedBoards, autoTagBpm, autoTagKey]);
 
   // ── GLOBAL KEYBOARD SHORTCUTS ────────────────────────────────────────────────
   // All mutable state is read through refs so the listener never goes stale.
@@ -1522,6 +1527,8 @@ function App() {
   }
   function handleUpdateNote(cardId, note) { if (isEffectiveViewer) return; setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.map(c => c.id === cardId ? { ...c, note } : c) }))); setSelectedCard(prev => prev?.id === cardId ? { ...prev, note } : prev); }
   function handleUpdateTags(cardId, tags) { if (isEffectiveViewer) return; setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.map(c => c.id === cardId ? { ...c, tags } : c) }))); setSelectedCard(prev => prev?.id === cardId ? { ...prev, tags } : prev); }
+  function handleUpdateBpm(cardId, bpm) { if (isEffectiveViewer) return; setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.map(c => c.id === cardId ? { ...c, bpm } : c) }))); setSelectedCard(prev => prev?.id === cardId ? { ...prev, bpm } : prev); }
+  function handleUpdateKey(cardId, key) { if (isEffectiveViewer) return; setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.map(c => c.id === cardId ? { ...c, key } : c) }))); setSelectedCard(prev => prev?.id === cardId ? { ...prev, key } : prev); }
   async function handleAddCard(colId) { if (isEffectiveViewer) return; const title = await askName("New Card", null, "Project or session name…"); if (!title) return; setColumns(cols => cols.map(col => col.id === colId ? { ...col, cards: [...col.cards, { id: Date.now().toString(), title, daw: "fl", path: `~/Music/${title}.flp`, tags: [], note: "", date: "Just now" }] } : col)); }
   function handleDeleteCard(cardId) { if (isEffectiveViewer) return; setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.filter(c => c.id !== cardId) }))); setSelectedCard(prev => prev?.id === cardId ? null : prev); }
   function handleRenameCard(cardId, title) { if (isEffectiveViewer) return; setColumns(cols => cols.map(col => ({ ...col, cards: col.cards.map(c => c.id === cardId ? { ...c, title } : c) }))); setSelectedCard(prev => prev?.id === cardId ? { ...prev, title } : prev); }
@@ -1596,7 +1603,13 @@ function App() {
     const result = await pickAndScanFolder(); if (!result) return;
     setWatchedFolders(prev => [...new Set([...prev, ...result.folders])]);
     if (result.files.length === 0) { alert("No DAW projects found."); return; }
-    const withMeta = await Promise.all(result.files.map(async f => { try { return { ...f, fileModified: await invoke("get_file_modified", { path: f.path }) }; } catch (e) { return f; } }));
+    const withMeta = await Promise.all(result.files.map(async f => {
+      const [fileModified, dawMeta] = await Promise.allSettled([
+        invoke("get_file_modified", { path: f.path }),
+        extractDawMeta(f.path, f.daw),
+      ]);
+      return { ...f, fileModified: fileModified.value ?? null, ...(dawMeta.value ?? {}) };
+    }));
     const cols = columnsRef.current;
     if (cols.length === 0) return;
     const targetId = cols.length === 1 ? cols[0].id : await askPickColumn(cols, `Found ${withMeta.length} projects — add into which column?`);
@@ -1611,7 +1624,13 @@ function App() {
   async function handleRescan() {
     if (watchedFolders.length === 0) { alert("Add a folder first."); return; }
     const found = await scanForProjects(watchedFolders); if (found.length === 0) { alert("No new projects found."); return; }
-    const withMeta = await Promise.all(found.map(async f => { try { return { ...f, fileModified: await invoke("get_file_modified", { path: f.path }) }; } catch (e) { return f; } }));
+    const withMeta = await Promise.all(found.map(async f => {
+      const [fileModified, dawMeta] = await Promise.allSettled([
+        invoke("get_file_modified", { path: f.path }),
+        extractDawMeta(f.path, f.daw),
+      ]);
+      return { ...f, fileModified: fileModified.value ?? null, ...(dawMeta.value ?? {}) };
+    }));
     const cols = columnsRef.current;
     if (cols.length === 0) return;
     const targetId = cols.length === 1 ? cols[0].id : await askPickColumn(cols, `Rescan found ${found.length} projects — add into which column?`);
@@ -1698,7 +1717,7 @@ function App() {
         />
       )}
       {showShareModal && user && <ShareModal boardId={currentBoardId} boardName={currentPage?.name || "Board"} isShared={isCurrentBoardShared} user={user} members={collabMembers} sentInvites={sentInvites} myRole={myRole} boardLocked={boardLocked} pendingInvites={pendingInvites} onShare={handleShareBoard} onJoin={handleJoinBoard} onLeave={handleLeaveBoard} onDelete={handleStopSharing} onUpdateRole={(userId, role) => updateMemberRole(currentBoardId, userId, role)} onRemoveMember={(userId) => removeMember(currentBoardId, userId)} onAddMember={async (email, role) => { const r = await addMemberByEmail(email, role); fetchSentInvites(); return r; }} onRespondToInvite={handleRespondToInvite} onToggleLock={toggleBoardLock} onClose={() => setShowShareModal(false)} theme={theme} />}
-      {showTagManager && <TagManager allTags={customTags} onAddTag={tag => { if (!customTags.find(t => t.label === tag.label)) setCustomTags(p => [...p, tag]); }} onDeleteTag={l => setCustomTags(p => p.filter(t => t.label !== l))} onClose={() => setShowTagManager(false)} theme={theme} />}
+      {showTagManager && <TagManager allTags={customTags} onAddTag={tag => { if (!customTags.find(t => t.label === tag.label)) setCustomTags(p => [...p, tag]); }} onDeleteTag={l => setCustomTags(p => p.filter(t => t.label !== l))} onClose={() => setShowTagManager(false)} theme={theme} autoTagBpm={autoTagBpm} setAutoTagBpm={setAutoTagBpm} autoTagKey={autoTagKey} setAutoTagKey={setAutoTagKey} />}
       {pendingConfirm && (
         <ConfirmModal
           title={pendingConfirm.title}
@@ -1735,7 +1754,8 @@ function App() {
       {showErrorBar && (
         <div style={{ background: "#c0392b", padding: "7px 16px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
           <span style={{ flex: 1, fontSize: 12, color: "#fff", fontWeight: 600 }}>⚠ Runtime error detected</span>
-          <button onClick={sendErrorReport} style={{ padding: "4px 12px", background: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#c0392b" }}>Send Error Report</button>
+          <button onClick={async () => { await sendErrorReport(); window.location.reload(); }} style={{ padding: "4px 12px", background: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#c0392b" }}>Send Report & Refresh</button>
+          <button onClick={() => window.location.reload()} style={{ padding: "4px 12px", background: "transparent", border: "1px solid rgba(255,255,255,0.4)", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#fff" }}>Refresh</button>
           <button onClick={() => setShowErrorBar(false)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: 16 }}>×</button>
         </div>
       )}
@@ -2118,6 +2138,7 @@ function App() {
                             onRequestConfirm={requestConfirm}
                             allTags={effectiveTags} sortBy={sortBy} sortDir={sortDir}
                             activeFilters={activeTagFilters} activeProjectFilters={activeProjectFilters} allProjects={projects} searchQuery={searchQuery} theme={theme}
+                            autoTagBpm={autoTagBpm} autoTagKey={autoTagKey}
                             isCardDrag={isCardDrag}
                             isColDrag={!isCardDrag && activeColId !== null}
                             isCollapsed={collapsedCols.includes(col.id)} isLocked={lockedCols.includes(col.id)} isViewer={isEffectiveViewer}
@@ -2174,7 +2195,7 @@ function App() {
             </div>
           </div>
 
-          <DetailPanel card={selectedCard} onUpdateNote={handleUpdateNote} onUpdateTags={handleUpdateTags} onOpenInDaw={handleOpenInDaw} allTags={effectiveTags} theme={theme} isViewer={isEffectiveViewer} />
+          <DetailPanel card={selectedCard} onUpdateNote={handleUpdateNote} onUpdateTags={handleUpdateTags} onOpenInDaw={handleOpenInDaw} allTags={effectiveTags} theme={theme} isViewer={isEffectiveViewer} autoTagBpm={autoTagBpm} autoTagKey={autoTagKey} />
         </div>
     </div>
   );

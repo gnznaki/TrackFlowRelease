@@ -9,7 +9,7 @@ import Tag from "./Tag";
 import ContextMenu from "./ContextMenu";
 import { DAW_COLORS, DAW_LABELS } from "../lib/constants";
 
-export function CardContent({ card, isSelected, onDelete, isDragging, allTags, theme }) {
+export function CardContent({ card, isSelected, onDelete, isDragging, allTags, theme, autoTagBpm, autoTagKey }) {
   const [hovered, setHovered] = useState(false);
   const dawColor = DAW_COLORS[card.daw] || theme.text2;
 
@@ -69,11 +69,13 @@ export function CardContent({ card, isSelected, onDelete, isDragging, allTags, t
         {card.path}
       </div>
 
-      <div style={{ flexWrap: "wrap", display: "flex", marginBottom: card.note ? 7 : 0 }}>
+      <div style={{ flexWrap: "wrap", display: "flex", marginBottom: card.note ? 7 : 0, gap: 3 }}>
         {(card.tags || []).map(t => {
           const td = allTags?.find(x => x.label === t);
           return <Tag key={t} label={t} color={td?.color} theme={theme} style={{ borderRadius: 10 }} />;
         })}
+        {autoTagBpm && card.bpm != null && <Tag label={`${card.bpm} BPM`} color={theme.accent} theme={theme} />}
+        {autoTagKey && card.key && <Tag label={card.key} color={theme.accent} theme={theme} />}
       </div>
 
       {card.note && (
@@ -89,7 +91,7 @@ export function CardContent({ card, isSelected, onDelete, isDragging, allTags, t
   );
 }
 
-function DraggableCard({ card, colId, isSelected, onClick, onDelete, onOpenInDaw, allTags, theme, isLocked, onCardOver, onCardOverZone }) {
+function DraggableCard({ card, colId, isSelected, onClick, onDelete, onOpenInDaw, allTags, theme, isLocked, onCardOver, onCardOverZone, autoTagBpm, autoTagKey }) {
   const elRef = useRef(null);
   const [cardMenu, setCardMenu] = useState(null);
 
@@ -169,7 +171,7 @@ function DraggableCard({ card, colId, isSelected, onClick, onDelete, onOpenInDaw
         <ContextMenu x={cardMenu.x} y={cardMenu.y} items={cardMenuItems} onClose={() => setCardMenu(null)} theme={theme} />,
         document.body
       )}
-      <CardContent card={card} isSelected={isSelected} onDelete={onDelete} allTags={allTags} theme={theme} />
+      <CardContent card={card} isSelected={isSelected} onDelete={onDelete} allTags={allTags} theme={theme} autoTagBpm={autoTagBpm} autoTagKey={autoTagKey} />
     </div>
   );
 }
@@ -229,7 +231,7 @@ function CardDropZone({ colId, children, theme, isCardDrag, isColDrag, colMaxHei
   );
 }
 
-export function DraggableColumn({ col, selectedCard, onSelectCard, onAddCard, onDeleteCard, onOpenInDaw, onRenameCol, onDeleteCol, onDuplicateCol, onChangeColor, onToggleCollapse, onToggleLock, onClearCol, onMoveRowUp, onMoveRowDown, onMoveToNewRow, allTags, sortBy, sortDir, activeFilters, activeProjectFilters, allProjects, searchQuery, theme, isCardDrag, isColDrag, isCollapsed, isLocked, isViewer, colMaxHeight, canMoveUp, canMoveDown, onCardOver, onCardOverZone, onColOver, colFlipRef, onRequestConfirm }) {
+export function DraggableColumn({ col, selectedCard, onSelectCard, onAddCard, onDeleteCard, onOpenInDaw, onRenameCol, onDeleteCol, onDuplicateCol, onChangeColor, onToggleCollapse, onToggleLock, onClearCol, onMoveRowUp, onMoveRowDown, onMoveToNewRow, allTags, sortBy, sortDir, activeFilters, activeProjectFilters, allProjects, searchQuery, theme, isCardDrag, isColDrag, isCollapsed, isLocked, isViewer, colMaxHeight, canMoveUp, canMoveDown, onCardOver, onCardOverZone, onColOver, colFlipRef, onRequestConfirm, autoTagBpm, autoTagKey }) {
   const outerRef = useRef(null);
   const handleRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -547,6 +549,8 @@ export function DraggableColumn({ col, selectedCard, onSelectCard, onAddCard, on
                 isLocked={isLocked || isViewer}
                 onCardOver={onCardOver}
                 onCardOverZone={onCardOverZone}
+                autoTagBpm={autoTagBpm}
+                autoTagKey={autoTagKey}
               />
             ))}
             {sortedCards.length === 0 && activeFilters.length > 0 && (

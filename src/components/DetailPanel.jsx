@@ -61,7 +61,7 @@ function ResizeHandle({ onDragStart, onResize, theme }) {
   );
 }
 
-export default function DetailPanel({ card, onUpdateNote, onUpdateTags, onOpenInDaw, allTags, theme, isViewer }) {
+export default function DetailPanel({ card, onUpdateNote, onUpdateTags, onOpenInDaw, allTags, theme, isViewer, autoTagBpm, autoTagKey }) {
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const startWidthRef = useRef(DEFAULT_WIDTH);
@@ -116,6 +116,8 @@ export default function DetailPanel({ card, onUpdateNote, onUpdateTags, onOpenIn
             const td = allTags.find(x => x.label === t);
             return <Tag key={t} label={t} color={td?.color} theme={theme} onRemove={isViewer ? null : () => onUpdateTags(card.id, (card.tags || []).filter(x => x !== t))} />;
           })}
+          {autoTagBpm && card.bpm != null && <Tag label={`${card.bpm} BPM`} color={theme.accent} theme={theme} />}
+          {autoTagKey && card.key && <Tag label={card.key} color={theme.accent} theme={theme} />}
         </div>
         {!isViewer && (
           <div style={{ position: "relative" }}>

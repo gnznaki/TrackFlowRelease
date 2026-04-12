@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "../lib/supabase";
+import { reportError } from "../lib/errorReporting";
 
 const C = {
   bg: "#08080a",
@@ -220,11 +221,31 @@ function SubmitBtn({ loading, disabled, children }) {
 }
 
 function ErrorBanner({ error, onClose }) {
+  const [sending, setSending] = useState(false);
   if (!error) return null;
+
+  async function handleSendAndRefresh() {
+    setSending(true);
+    await reportError({ type: "auth_error", message: error });
+    window.location.reload();
+  }
+
   return (
-    <div style={{ background: "rgba(255,80,80,0.08)", border: "1px solid rgba(255,80,80,0.18)", borderRadius: 8, padding: "9px 12px", marginBottom: 14, fontSize: 12, color: C.error, lineHeight: 1.5, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-      <span>{error}</span>
-      <button type="button" onClick={onClose} style={{ background: "transparent", border: "none", color: C.error, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0, opacity: 0.6 }}>×</button>
+    <div style={{ background: "rgba(255,80,80,0.08)", border: "1px solid rgba(255,80,80,0.18)", borderRadius: 8, padding: "9px 12px", marginBottom: 14, fontSize: 12, color: C.error, lineHeight: 1.5 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+        <span>{error}</span>
+        <button type="button" onClick={onClose} style={{ background: "transparent", border: "none", color: C.error, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0, opacity: 0.6 }}>×</button>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="button" onClick={handleSendAndRefresh} disabled={sending}
+          style={{ flex: 1, padding: "5px 10px", background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 6, color: C.error, fontSize: 11, fontWeight: 700, cursor: "pointer", opacity: sending ? 0.6 : 1 }}>
+          {sending ? "Sending..." : "Send Report & Refresh"}
+        </button>
+        <button type="button" onClick={() => window.location.reload()}
+          style={{ padding: "5px 10px", background: "transparent", border: "1px solid rgba(255,80,80,0.2)", borderRadius: 6, color: C.error, fontSize: 11, fontWeight: 700, cursor: "pointer", opacity: 0.7 }}>
+          Refresh
+        </button>
+      </div>
     </div>
   );
 }
