@@ -10,6 +10,7 @@ import { PRODUCER_COLUMNS, ENGINEER_COLUMNS, DEFAULT_TAGS, DEFAULT_COL_HEIGHT } 
 import { migrateState } from "./lib/migrate";
 import { useFlip } from "./hooks/useFlip";
 import { postToDiscord } from "./lib/discord";
+import { reportError } from "./lib/errorReporting";
 import { supabase } from "./lib/supabase";
 import { DraggableColumn } from "./components/Column";
 import ProjectSidebar from "./components/ProjectSidebar";
@@ -1624,7 +1625,11 @@ function App() {
 
   async function sendErrorReport() {
     const latest = errorLog[errorLog.length - 1];
-    const ok = await postToDiscord("🟡 TrackFlow Runtime Error", `**Error:** ${latest?.message || "Unknown"}\n\`\`\`${(latest?.stack || "No stack").substring(0, 1500)}\`\`\``);
+    const ok = await reportError({
+      type: "runtime",
+      message: latest?.message,
+      stack: latest?.stack,
+    });
     if (ok) { setShowErrorBar(false); setErrorLog([]); } else alert("Send failed.");
   }
 

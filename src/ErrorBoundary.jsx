@@ -1,7 +1,5 @@
 import { Component } from "react";
-import { postToDiscord } from "./lib/discord";
-
-const APP_VERSION = "1.2.1";
+import { reportError } from "./lib/errorReporting";
 
 export class ErrorBoundary extends Component {
   constructor(props) {
@@ -21,27 +19,23 @@ export class ErrorBoundary extends Component {
   }
 
   async _autoSend(error, componentStack) {
-    const body = [
-      `**Version:** ${APP_VERSION}`,
-      `**Error:** ${error?.message || "Unknown"}`,
-      `\`\`\`\n${(error?.stack || "").substring(0, 900)}\n\`\`\``,
-      `**Component Tree:**\`\`\`\n${(componentStack || "").substring(0, 500)}\n\`\`\``,
-      `**Time:** ${new Date().toLocaleString()}`,
-    ].join("\n");
-    const ok = await postToDiscord("🔴 TrackFlow Crash (Auto-Report)", body, 0xff2222);
+    const ok = await reportError({
+      type: "crash",
+      message: error?.message,
+      stack: error?.stack,
+      context: { componentStack: (componentStack || "").substring(0, 800) },
+    });
     if (ok) this.setState({ autoSent: true });
   }
 
   async sendError() {
     this.setState({ sending: true });
-    const body = [
-      `**Version:** ${APP_VERSION}`,
-      `**Error:** ${this.state.error?.message || "Unknown"}`,
-      `\`\`\`\n${(this.state.error?.stack || "").substring(0, 900)}\n\`\`\``,
-      `**Component Tree:**\`\`\`\n${(this._componentStack || "").substring(0, 500)}\n\`\`\``,
-      `**Time:** ${new Date().toLocaleString()}`,
-    ].join("\n");
-    const ok = await postToDiscord("🔴 TrackFlow Crash (Manual Report)", body, 0xff2222);
+    const ok = await reportError({
+      type: "manual",
+      message: this.state.error?.message,
+      stack: this.state.error?.stack,
+      context: { componentStack: (this._componentStack || "").substring(0, 800) },
+    });
     this.setState({ sending: false, sent: ok });
     if (!ok) alert("Send failed.");
   }
