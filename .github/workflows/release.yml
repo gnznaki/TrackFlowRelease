@@ -57,7 +57,7 @@ jobs:
           Write-Host "Files in $nsisDir :"
           Get-ChildItem $nsisDir | ForEach-Object { Write-Host "  $($_.Name)" }
 
-          $sigFile = Get-ChildItem $nsisDir -Filter "*.sig" | Select-Object -First 1
+          $sigFile = Get-ChildItem $nsisDir -Filter "*.nsis.zip.sig" | Select-Object -First 1
           if (-not $sigFile) {
             Write-Error "No .sig file found in $nsisDir"
             exit 1
