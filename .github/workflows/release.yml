@@ -38,6 +38,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_STRIPE_PREMIUM_PRICE_ID: ${{ secrets.VITE_STRIPE_PREMIUM_PRICE_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "TrackFlow ${{ github.ref_name }}"

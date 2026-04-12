@@ -525,6 +525,7 @@ function App() {
   // "Remove Sharing" — kicks all collaborators but the owner keeps their board tab locally.
   // The shared_boards record is NOT deleted so the owner can reshare whenever.
   async function handleStopSharing(boardId) {
+    if (myRole !== "owner") return;
     await stopSharing(boardId);
     // Remove boardId from sharedBoards so this tab reverts to local mode
     setSharedBoards(prev => prev.filter(id => id !== boardId));
@@ -1716,7 +1717,7 @@ function App() {
           theme={theme}
         />
       )}
-      {showShareModal && user && <ShareModal boardId={currentBoardId} boardName={currentPage?.name || "Board"} isShared={isCurrentBoardShared} user={user} members={collabMembers} sentInvites={sentInvites} myRole={myRole} boardLocked={boardLocked} pendingInvites={pendingInvites} onShare={handleShareBoard} onJoin={handleJoinBoard} onLeave={handleLeaveBoard} onDelete={handleStopSharing} onUpdateRole={(userId, role) => updateMemberRole(currentBoardId, userId, role)} onRemoveMember={(userId) => removeMember(currentBoardId, userId)} onAddMember={async (email, role) => { const r = await addMemberByEmail(email, role); fetchSentInvites(); return r; }} onRespondToInvite={handleRespondToInvite} onToggleLock={toggleBoardLock} onClose={() => setShowShareModal(false)} theme={theme} />}
+      {showShareModal && user && <ShareModal boardId={currentBoardId} boardName={currentPage?.name || "Board"} isShared={isCurrentBoardShared} user={user} members={collabMembers} sentInvites={sentInvites} myRole={myRole} boardLocked={boardLocked} pendingInvites={pendingInvites} onShare={handleShareBoard} onJoin={handleJoinBoard} onLeave={handleLeaveBoard} onDelete={handleStopSharing} onUpdateRole={(userId, role) => { if (myRole !== "owner") return; updateMemberRole(currentBoardId, userId, role); }} onRemoveMember={(userId) => { if (myRole !== "owner") return; removeMember(currentBoardId, userId); }} onAddMember={async (email, role) => { if (myRole !== "owner") return { error: "Only the board owner can invite members." }; const r = await addMemberByEmail(email, role); fetchSentInvites(); return r; }} onRespondToInvite={handleRespondToInvite} onToggleLock={toggleBoardLock} onClose={() => setShowShareModal(false)} theme={theme} />}
       {showTagManager && <TagManager allTags={customTags} onAddTag={tag => { if (!customTags.find(t => t.label === tag.label)) setCustomTags(p => [...p, tag]); }} onDeleteTag={l => setCustomTags(p => p.filter(t => t.label !== l))} onClose={() => setShowTagManager(false)} theme={theme} autoTagBpm={autoTagBpm} setAutoTagBpm={setAutoTagBpm} autoTagKey={autoTagKey} setAutoTagKey={setAutoTagKey} />}
       {pendingConfirm && (
         <ConfirmModal
