@@ -24,19 +24,53 @@ export default function PurchaseGate({ user, signOut, onRefreshTier }) {
   const [showCheckout, setShowCheckout] = useState(false);
   const [checking, setChecking] = useState(false);
   const [message, setMessage] = useState(null);
+  const [confirming, setConfirming] = useState(false);
+
+  // Poll the DB every 1.5s for up to 15s waiting for the Stripe webhook to flip the tier.
+  // Falls back to a final refreshTier call regardless so the realtime sub can take over.
+  async function pollTierAfterPayment() {
+    setConfirming(true);
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 1500));
+      try {
+        const { data } = await supabase.from("profiles").select("tier").eq("id", user.id).single();
+        if (data?.tier === "premium" || data?.tier === "ongoing") {
+          await onRefreshTier?.();
+          return;
+        }
+      } catch { /* ignore fetch errors mid-poll */ }
+    }
+    // Webhook may still be in-flight — refresh once more and let realtime handle it
+    await onRefreshTier?.();
+    setConfirming(false);
+  }
 
   async function handleAlreadyPurchased() {
     setChecking(true);
     setMessage(null);
-    const { data } = await supabase.from("profiles").select("tier").eq("id", user.id).single();
-    if (data?.tier === "premium" || data?.tier === "ongoing") {
-      setMessage("Purchase confirmed! Loading...");
-      await onRefreshTier?.();
-    } else {
-      setMessage("No purchase found. Complete checkout first.");
+    try {
+      const { data } = await supabase.from("profiles").select("tier").eq("id", user.id).single();
+      if (data?.tier === "premium" || data?.tier === "ongoing") {
+        setMessage("Purchase confirmed! Loading...");
+        await onRefreshTier?.();
+      } else {
+        setMessage("No purchase found. Complete checkout first.");
+        setChecking(false);
+      }
+    } catch {
+      setMessage("Couldn't check purchase status. Try again.");
       setChecking(false);
     }
   }
+
+  if (confirming) return (
+    <div style={{ height: "100vh", background: "#0a0a0b", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "Syne, sans-serif", gap: 16 }}>
+      <style>{`@keyframes tf-spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid rgba(200,255,71,0.15)", borderTopColor: "#c8ff47", animation: "tf-spin 0.8s linear infinite" }} />
+      <div style={{ fontSize: 14, fontWeight: 700, color: "#f0f0f0" }}>Confirming your purchase…</div>
+      <div style={{ fontSize: 12, color: "#555" }}>This usually takes a few seconds.</div>
+    </div>
+  );
 
   return (
     <div style={{
@@ -87,7 +121,7 @@ export default function PurchaseGate({ user, signOut, onRefreshTier }) {
           </div>
 
           {/* Actions */}
-          <div style={{ padding: "24px 24px 20px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ padding: "24px 24px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
             <button
               onClick={() => setShowCheckout(true)}
               style={{ width: "100%", padding: "13px 0", background: "#c8ff47", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 800, color: "#000", letterSpacing: "0.04em", fontFamily: "Syne, sans-serif" }}
@@ -95,7 +129,6 @@ export default function PurchaseGate({ user, signOut, onRefreshTier }) {
               Buy Now — $10
             </button>
 
-            {/* Already purchased */}
             <button
               onClick={handleAlreadyPurchased}
               disabled={checking}
@@ -121,6 +154,11 @@ export default function PurchaseGate({ user, signOut, onRefreshTier }) {
               </div>
             )}
           </div>
+
+          {/* Refund policy */}
+          <div style={{ padding: "0 24px 20px", fontSize: 11, color: "#444", textAlign: "center", lineHeight: 1.6 }}>
+            Not happy? Contact us within 30 days for a full refund.
+          </div>
         </div>
 
         {/* Sign out */}
@@ -139,9 +177,9 @@ export default function PurchaseGate({ user, signOut, onRefreshTier }) {
       {showCheckout && (
         <CheckoutModal
           onClose={() => setShowCheckout(false)}
-          onSuccess={async () => {
+          onSuccess={() => {
             setShowCheckout(false);
-            setTimeout(() => onRefreshTier?.(), 2000);
+            pollTierAfterPayment();
           }}
         />
       )}

@@ -1656,7 +1656,7 @@ function App() {
           theme={theme}
         />
       )}
-      {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} theme={theme} />}
+      {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} onPurchased={() => setTimeout(() => refreshTier(), 2000)} theme={theme} />}
       {crossPageDrop && (
         <CrossPageModal
           type={crossPageDrop.type}
@@ -2078,6 +2078,23 @@ function App() {
                 <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,180,0,0.9)", fontFamily: theme.font || "Syne" }}>
                   This board is locked — no changes can be made by anyone until the owner unlocks it.
                 </span>
+              </div>
+            )}
+            {/* First-run prompt: no folders scanned yet */}
+            {watchedFolders.length === 0 && columns.every(c => c.cards.length === 0) && !isEffectiveViewer && (
+              <div style={{ margin: "0 16px", padding: "14px 20px", background: `rgba(${theme.accentRgb},0.06)`, border: `1px solid rgba(${theme.accentRgb},0.2)`, borderRadius: theme.r, display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: theme.text, marginBottom: 3 }}>Scan your project folders to get started</div>
+                  <div style={{ fontSize: 12, color: theme.text3 }}>TrackFlow will find all your .flp, .als, .ptx, and .rpp files and add them to the board automatically.</div>
+                </div>
+                <button
+                  onClick={handleAddFolder}
+                  style={{ flexShrink: 0, padding: "9px 18px", background: theme.accent, border: "none", borderRadius: theme.r, fontSize: 12, fontWeight: 800, color: theme.accentText || "#08080a", fontFamily: font || "Syne", cursor: "pointer", whiteSpace: "nowrap" }}
+                  onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
+                  onMouseLeave={e => e.currentTarget.style.filter = "none"}
+                >
+                  Scan a folder
+                </button>
               </div>
             )}
             <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 16, minWidth: "fit-content", zoom: boardZoom / 100 }}>

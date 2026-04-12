@@ -160,7 +160,7 @@ function PaymentForm({ onSuccess, onClose }) {
 
       <div style={{ marginTop: 10, fontSize: 11, color: C.text3, textAlign: "center", lineHeight: 1.6 }}>
         Secured by Stripe · No subscription · Instant access
-        <br />All sales final · No refunds
+        <br />Not happy? Contact us within 30 days for a full refund.
       </div>
     </form>
   );

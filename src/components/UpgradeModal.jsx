@@ -19,7 +19,7 @@ function Check({ color }) {
   );
 }
 
-export default function UpgradeModal({ onClose, theme }) {
+export default function UpgradeModal({ onClose, onPurchased, theme }) {
   const C = theme;
   const [showCheckout, setShowCheckout] = useState(false);
 
@@ -81,7 +81,7 @@ export default function UpgradeModal({ onClose, theme }) {
       {showCheckout && (
         <CheckoutModal
           onClose={() => setShowCheckout(false)}
-          onSuccess={() => { setShowCheckout(false); onClose(); }}
+          onSuccess={() => { setShowCheckout(false); onPurchased?.(); onClose(); }}
         />
       )}
     </div>
