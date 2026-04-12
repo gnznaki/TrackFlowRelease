@@ -53,9 +53,22 @@ jobs:
         id: sig
         shell: pwsh
         run: |
-          $sig = Get-Content "src-tauri/target/release/bundle/nsis/TrackFlow_${{ steps.version.outputs.version }}_x64-setup.exe.sig" -Raw
-          $sig = $sig.Trim()
-          echo "signature=$sig" >> $env:GITHUB_OUTPUT
+          $nsisDir = "src-tauri/target/release/bundle/nsis"
+          Write-Host "Files in $nsisDir :"
+          Get-ChildItem $nsisDir | ForEach-Object { Write-Host "  $($_.Name)" }
+
+          $sigFile = Get-ChildItem $nsisDir -Filter "*.sig" | Select-Object -First 1
+          if (-not $sigFile) {
+            Write-Error "No .sig file found in $nsisDir"
+            exit 1
+          }
+          Write-Host "Using sig file: $($sigFile.Name)"
+
+          $sig    = (Get-Content $sigFile.FullName -Raw).Trim()
+          $bundle = $sigFile.BaseName  # e.g. TrackFlow_2.1.0_x64-setup.nsis.zip
+
+          echo "signature=$sig"    >> $env:GITHUB_OUTPUT
+          echo "bundle=$bundle"    >> $env:GITHUB_OUTPUT
 
       - name: Update latest.json in website repo
         shell: pwsh
@@ -63,11 +76,12 @@ jobs:
           SITE_TOKEN: ${{ secrets.SITE_DEPLOY_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
           SIGNATURE: ${{ steps.sig.outputs.signature }}
+          BUNDLE: ${{ steps.sig.outputs.bundle }}
         run: |
           $version  = $env:VERSION
           $sig      = $env:SIGNATURE
           $pubDate  = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
-          $url      = "https://github.com/gnznaki/TrackFlowRelease/releases/download/v$version/TrackFlow_${version}_x64-setup.exe"
+          $url      = "https://github.com/gnznaki/TrackFlowRelease/releases/download/v$version/$env:BUNDLE"
 
           $json = @{
             version   = $version
