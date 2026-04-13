@@ -1,6 +1,6 @@
 {
   "productName": "TrackFlow",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "identifier": "com.trackflow.app",
   "build": {
     "beforeDevCommand": "npm run dev",

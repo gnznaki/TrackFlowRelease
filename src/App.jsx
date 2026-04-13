@@ -328,7 +328,7 @@ function App() {
   const [colPickerState, setColPickerState] = useState(null); // { cols, message, resolve }
 
   const { tier, tierLoading, isPaid, isPremium, displayName, avatarColor, avatarUrl, createdAt, invitesDisabled, updateDisplayName, updateAvatarColor, updateAvatarUrl, updateInvitesDisabled, refreshTier } = useTier(user?.id);
-  const { update: appUpdate, installing: updateInstalling, installUpdate, dismiss: dismissUpdate } = useUpdater();
+  const { update: appUpdate, installing: updateInstalling, progress: updateProgress, updateError, installUpdate, dismiss: dismissUpdate } = useUpdater();
   const [pendingInvites, setPendingInvites] = useState([]);
   const [sentInvites, setSentInvites] = useState([]);
   const [editingDisplayName, setEditingDisplayName] = useState(false);
@@ -1741,13 +1741,18 @@ function App() {
       {appUpdate && (
         <div style={{ background: `rgba(${theme.accentRgb},0.12)`, borderBottom: `1px solid rgba(${theme.accentRgb},0.25)`, padding: "7px 16px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
           <span style={{ flex: 1, fontSize: 12, color: theme.accent, fontWeight: 600 }}>
-            TrackFlow v{appUpdate.version} is available
-            {appUpdate.body ? ` — ${appUpdate.body}` : ""}
+            {updateError
+              ? `Update failed: ${updateError}`
+              : updateProgress
+              ? updateProgress
+              : `TrackFlow v${appUpdate.version} is available${appUpdate.body ? ` — ${appUpdate.body}` : ""}`}
           </span>
-          <button onClick={installUpdate} disabled={updateInstalling} style={{ padding: "4px 14px", background: theme.accent, border: "none", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: updateInstalling ? "default" : "pointer", color: "#08080a", opacity: updateInstalling ? 0.6 : 1 }}>
-            {updateInstalling ? "Installing…" : "Update now"}
-          </button>
-          <button onClick={dismissUpdate} style={{ background: "transparent", border: "none", color: theme.text3, cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
+          {!updateInstalling && (
+            <button onClick={installUpdate} style={{ padding: "4px 14px", background: theme.accent, border: "none", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#08080a" }}>
+              {updateError ? "Retry" : "Update now"}
+            </button>
+          )}
+          {!updateInstalling && <button onClick={dismissUpdate} style={{ background: "transparent", border: "none", color: theme.text3, cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>}
         </div>
       )}
 
