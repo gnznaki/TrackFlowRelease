@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 
 export default function useUpdater() {
-  const [update, setUpdate] = useState(null); // { version, body }
-  const [installing, setInstalling] = useState(false);
-  const [progress, setProgress] = useState(null); // "Downloading… 42%" | "Installing…" | null
-  const [updateError, setUpdateError] = useState(null);
+  const [update, setUpdate] = useState(null);
+  const [status, setStatus] = useState(null); // null | "downloading" | "installing" | "error"
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [pct, setPct] = useState(0);
 
   useEffect(() => {
     if (!window.__TAURI_INTERNALS__) return;
@@ -27,40 +27,42 @@ export default function useUpdater() {
   }, []);
 
   async function installUpdate() {
-    if (!update?.raw || installing) return;
-    setInstalling(true);
-    setUpdateError(null);
-    setProgress("Starting download…");
+    if (!update?.raw || status === "downloading" || status === "installing") return;
+
+    setStatus("downloading");
+    setPct(0);
+    setErrorMsg(null);
 
     try {
       let downloaded = 0;
       let total = 0;
 
       await update.raw.downloadAndInstall(event => {
-        if (event.event === "Started") {
-          total = event.data.contentLength ?? 0;
-          setProgress("Downloading…");
-        } else if (event.event === "Progress") {
-          downloaded += event.data.chunkLength ?? 0;
-          if (total > 0) {
-            const pct = Math.round((downloaded / total) * 100);
-            setProgress(`Downloading… ${pct}%`);
-          }
-        } else if (event.event === "Finished") {
-          setProgress("Installing…");
+        switch (event.event) {
+          case "Started":
+            total = event.data?.contentLength ?? 0;
+            break;
+          case "Progress":
+            downloaded += event.data?.chunkLength ?? 0;
+            if (total > 0) setPct(Math.round((downloaded / total) * 100));
+            break;
+          case "Finished":
+            setStatus("installing");
+            break;
         }
       });
 
-      setProgress("Relaunching…");
+      // downloadAndInstall resolves when install is done — relaunch
       const { relaunch } = await import("@tauri-apps/plugin-process");
       await relaunch();
     } catch (e) {
-      console.error("[updater] install failed:", e);
-      setUpdateError(e?.message ?? String(e));
-      setInstalling(false);
-      setProgress(null);
+      console.error("[updater] failed:", e);
+      setErrorMsg(e?.message ?? String(e));
+      setStatus("error");
     }
   }
 
-  return { update, installing, progress, updateError, installUpdate, dismiss: () => { setUpdate(null); setUpdateError(null); } };
+  function dismiss() { setUpdate(null); setStatus(null); setErrorMsg(null); }
+
+  return { update, status, pct, errorMsg, installUpdate, dismiss };
 }
