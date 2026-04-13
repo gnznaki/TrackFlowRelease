@@ -1754,6 +1754,11 @@ function App() {
               {updateError ? "Retry" : "Update now"}
             </button>
           )}
+          {updateError && updateStatus !== "downloading" && updateStatus !== "installing" && (
+            <button onClick={() => reportError({ type: "updater", message: updateError, user_id: user?.id })} style={{ padding: "4px 14px", background: "transparent", border: `1px solid rgba(${theme.accentRgb},0.4)`, borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", color: theme.accent }}>
+              Send Report
+            </button>
+          )}
           {updateStatus !== "downloading" && updateStatus !== "installing" && (
             <button onClick={dismissUpdate} style={{ background: "transparent", border: "none", color: theme.text3, cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
           )}
