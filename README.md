@@ -4,6 +4,19 @@ A native Windows desktop app for music producers and engineers to organize their
 
 ---
 
+![TrackFlow board](docs/screenshots/board-amber.png)
+
+<p align="center">
+  <img src="docs/screenshots/board-dark.png" width="49%" />
+  <img src="docs/screenshots/theme-editor.png" width="49%" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/collab.png" width="49%" />
+</p>
+
+---
+
 ## What it does
 
 - **Auto-scans your project folders** — finds `.flp`, `.als`, and `.ptx` files automatically
