@@ -20,6 +20,10 @@ dist-ssr
 *.key
 src-tauri/signing.key
 
+# Claude Code internal files
+.claude/
+DEV.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
